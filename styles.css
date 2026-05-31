@@ -223,6 +223,9 @@ html, body {
   background: rgba(7,9,18,.66); backdrop-filter: blur(4px);
   display: flex; align-items: center; justify-content: center; padding: 20px;
 }
+/* The author `display: flex` above overrides the UA `hidden` rule, so the
+   modal must be explicitly hidden when the [hidden] attribute is present. */
+.modal-backdrop[hidden] { display: none; }
 .modal {
   width: min(520px, 100%);
   background: var(--bg-2); border: 1px solid var(--line);
