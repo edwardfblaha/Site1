@@ -102,6 +102,7 @@
       }
     } catch (e) {
       console.error("base: could not load plan", e);
+      reportDbError("Load failed", e);
       plan = defaultPlan();
     }
   }
@@ -128,8 +129,20 @@
       setSaveStatus("Saved", true);
     } catch (e) {
       console.error("base: could not save plan", e);
-      setSaveStatus("Save failed");
+      reportDbError("Save failed", e);
     }
+  }
+
+  // Show the real Supabase/Postgres error in the UI — the console isn't
+  // visible to everyone, and the actual message (table missing, RLS denial,
+  // bad column) is what we need to act on.
+  function reportDbError(prefix, e) {
+    const msg = e && (e.message || e.error_description || e.hint || e.code)
+      ? `${e.code ? "[" + e.code + "] " : ""}${e.message || e.error_description || e.hint}`
+      : "unknown error";
+    setSaveStatus(`${prefix}: ${msg}`);
+    const el = $("saveStatus");
+    if (el) el.title = JSON.stringify(e, Object.getOwnPropertyNames(e || {}));
   }
 
   let saveStatusTimer = null;

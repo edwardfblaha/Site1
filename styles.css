@@ -383,7 +383,8 @@ body.authed .user-email { display: inline-block; }
 body.authed .save-status {
   display: inline-block; align-self: center;
   color: var(--text-faint); font-size: 12px; font-weight: 600;
-  min-width: 60px;
+  min-width: 60px; max-width: 360px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
 /* ---------- Responsive ---------- */
