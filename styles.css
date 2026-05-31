@@ -184,6 +184,14 @@ html, body {
 .day:hover { transform: translateY(-2px); background: var(--surface-2); }
 .day.is-empty { opacity: .82; }
 
+/* Selected days (for copy / paste / drag) get a clear highlight ring. */
+.day.is-selected {
+  box-shadow: 0 0 0 2px var(--t-long), 0 8px 20px rgba(124,92,255,.25);
+  background: var(--surface-2);
+}
+.day.is-dragging { opacity: .4; }
+.day.is-drop { box-shadow: 0 0 0 2px var(--strides); background: var(--surface-2); }
+
 /* Past days are dulled so today and the road ahead stand out. */
 .day.is-past { opacity: .5; filter: saturate(.45); background: var(--bg-2); }
 .day.is-past:hover { opacity: .8; filter: none; }
@@ -369,6 +377,14 @@ body.authed .auth-screen { display: none; }
 body.authed #logoutBtn { display: inline-flex; }
 body.authed .user-email { display: inline-block; }
 .user-email { align-self: center; color: var(--text-faint); font-size: 12px; }
+
+/* Save / selection status — quiet text in the header, only when signed in. */
+.save-status { display: none; }
+body.authed .save-status {
+  display: inline-block; align-self: center;
+  color: var(--text-faint); font-size: 12px; font-weight: 600;
+  min-width: 60px;
+}
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1100px) {

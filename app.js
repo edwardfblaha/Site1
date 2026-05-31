@@ -109,6 +109,7 @@
   // Debounced save so rapid edits collapse into a single upsert.
   function savePlan() {
     if (!sb || !currentUser) return;
+    setSaveStatus("Saving…");
     clearTimeout(saveTimer);
     saveTimer = setTimeout(savePlanNow, 400);
   }
@@ -124,9 +125,20 @@
         { onConflict: "user_id" }
       );
       if (error) throw error;
+      setSaveStatus("Saved", true);
     } catch (e) {
       console.error("base: could not save plan", e);
+      setSaveStatus("Save failed");
     }
+  }
+
+  let saveStatusTimer = null;
+  function setSaveStatus(text, fade) {
+    const el = $("saveStatus");
+    if (!el) return;
+    el.textContent = text || "";
+    clearTimeout(saveStatusTimer);
+    if (fade) saveStatusTimer = setTimeout(() => { el.textContent = ""; }, 2000);
   }
 
   function getDay(key) {
@@ -230,8 +242,10 @@
       (!isToday && isPast ? " is-past" : "") +
       (isRace ? " is-race" : "") +
       (dayHasContent(d) ? "" : " is-empty");
+    cell.dataset.key = key;
+    cell.draggable = true;
     cell.style.borderLeftColor = (amType || pmType) ? (amType || pmType).color : "var(--t-rest)";
-    cell.setAttribute("aria-label", `${DAY_NAMES[dayIdx]} ${key} — edit`);
+    cell.setAttribute("aria-label", `${DAY_NAMES[dayIdx]} ${key} — click to edit, ⌘/Ctrl-click to select`);
 
     const mileageClass = total > 0 ? "" : " zero";
 
@@ -275,7 +289,35 @@
       ${noteHtml}
       ${mods ? `<div class="day-mods">${mods}</div>` : ""}`;
 
-    cell.addEventListener("click", () => openEditor(key, date, dayIdx));
+    // Click opens the editor; modifier-click selects for copy/paste/drag.
+    cell.addEventListener("click", (e) => {
+      if (e.shiftKey) { e.preventDefault(); rangeSelect(key); return; }
+      if (e.metaKey || e.ctrlKey) { e.preventDefault(); toggleSelect(key); return; }
+      if (selection.size) { clearSelection(); return; }
+      openEditor(key, date, dayIdx);
+    });
+
+    // Drag-and-drop: move this day (or the whole selection if it's part of it).
+    cell.addEventListener("dragstart", (e) => {
+      const keys = selection.has(key) && selection.size > 1
+        ? allDayKeys().filter((k) => selection.has(k))
+        : [key];
+      e.dataTransfer.setData("text/plain", JSON.stringify(keys));
+      e.dataTransfer.effectAllowed = "copyMove";
+      cell.classList.add("is-dragging");
+    });
+    cell.addEventListener("dragend", () => cell.classList.remove("is-dragging"));
+    cell.addEventListener("dragover", (e) => { e.preventDefault(); cell.classList.add("is-drop"); });
+    cell.addEventListener("dragleave", () => cell.classList.remove("is-drop"));
+    cell.addEventListener("drop", (e) => {
+      e.preventDefault();
+      cell.classList.remove("is-drop");
+      let sourceKeys;
+      try { sourceKeys = JSON.parse(e.dataTransfer.getData("text/plain")); } catch { return; }
+      if (Array.isArray(sourceKeys) && sourceKeys.length && !sourceKeys.includes(key)) {
+        dropBlock(sourceKeys, key);
+      }
+    });
     return cell;
   }
 
@@ -313,6 +355,111 @@
     renderLegend();
     renderCalendar();
     renderSummary();
+    applySelectionClasses();
+  }
+
+  // ---- Selection, copy / paste & drag ----
+  const selection = new Set(); // selected day keys (ISO dates)
+  let clipboard = null;        // array of copied day entries (in date order)
+  let lastAnchor = null;       // anchor for shift-range selection
+
+  // Ordered list of every day key currently shown.
+  function allDayKeys() {
+    const start = mondayOf(parseISO(plan.startDate));
+    const keys = [];
+    for (let i = 0; i < plan.weeks * 7; i++) keys.push(isoOf(addDays(start, i)));
+    return keys;
+  }
+  function cloneEntry(d) {
+    return {
+      mileage: d.mileage || 0, type: d.type || "", note: d.note || "",
+      pmMileage: d.pmMileage || 0, pmType: d.pmType || "", pmNote: d.pmNote || "",
+      double: !!d.double, strides: !!d.strides, hills: !!d.hills,
+    };
+  }
+  function setEntry(key, entry) {
+    const e = cloneEntry(entry);
+    if (dayHasContent(e)) plan.days[key] = e;
+    else delete plan.days[key];
+  }
+
+  function selectionInfo() {
+    if (!selection.size) return "";
+    return `${selection.size} selected · ⌘/Ctrl+C copy, ⌘/Ctrl+V paste`;
+  }
+  function updateSelectionStatus() { setSaveStatus(selectionInfo()); }
+  function applySelectionClasses() {
+    document.querySelectorAll(".day").forEach((el) => {
+      el.classList.toggle("is-selected", selection.has(el.dataset.key));
+    });
+  }
+  function clearSelection() {
+    selection.clear();
+    applySelectionClasses();
+    updateSelectionStatus();
+  }
+  function toggleSelect(key) {
+    if (selection.has(key)) selection.delete(key);
+    else selection.add(key);
+    lastAnchor = key;
+    applySelectionClasses();
+    updateSelectionStatus();
+  }
+  function rangeSelect(key) {
+    const keys = allDayKeys();
+    const a = keys.indexOf(lastAnchor == null ? key : lastAnchor);
+    const b = keys.indexOf(key);
+    if (a === -1 || b === -1) { toggleSelect(key); return; }
+    const [lo, hi] = a < b ? [a, b] : [b, a];
+    for (let i = lo; i <= hi; i++) selection.add(keys[i]);
+    applySelectionClasses();
+    updateSelectionStatus();
+  }
+
+  function copySelection() {
+    if (!selection.size) return;
+    const keys = allDayKeys().filter((k) => selection.has(k));
+    clipboard = keys.map((k) => cloneEntry(getDay(k)));
+    setSaveStatus(`Copied ${clipboard.length} day${clipboard.length > 1 ? "s" : ""}`, true);
+  }
+  function pasteSelection() {
+    if (!clipboard || !clipboard.length) return;
+    const keys = allDayKeys();
+    const targets = keys.filter((k) => selection.has(k));
+    if (!targets.length) { setSaveStatus("Select day(s) to paste onto", true); return; }
+    if (clipboard.length === 1) {
+      // One copied day fills every selected target.
+      targets.forEach((k) => setEntry(k, clipboard[0]));
+    } else {
+      // A copied block pastes from the earliest selected day onward.
+      const startIdx = keys.indexOf(targets[0]);
+      clipboard.forEach((entry, i) => {
+        const tk = keys[startIdx + i];
+        if (tk) setEntry(tk, entry);
+      });
+    }
+    savePlan();
+    renderCalendar();
+    renderSummary();
+    applySelectionClasses();
+    setSaveStatus("Pasted", true);
+  }
+  // Drag a day (or the whole selection) and drop it onto a target day.
+  function dropBlock(sourceKeys, targetKey) {
+    const keys = allDayKeys();
+    const ordered = keys.filter((k) => sourceKeys.includes(k));
+    const entries = ordered.map((k) => cloneEntry(getDay(k)));
+    const startIdx = keys.indexOf(targetKey);
+    if (startIdx === -1) return;
+    entries.forEach((entry, i) => {
+      const tk = keys[startIdx + i];
+      if (tk) setEntry(tk, entry);
+    });
+    savePlan();
+    renderCalendar();
+    renderSummary();
+    applySelectionClasses();
+    setSaveStatus(entries.length > 1 ? `Moved ${entries.length} days` : "Copied day", true);
   }
 
   // ---- Day editor modal ----
@@ -485,9 +632,28 @@
       if (e.target === $("modalBackdrop")) closeEditor();
     });
     document.addEventListener("keydown", (e) => {
-      if (!$("modalBackdrop").classList.contains("open")) return;
-      if (e.key === "Escape") closeEditor();
-      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) saveEditor();
+      // Editor shortcuts take priority while the modal is open.
+      if ($("modalBackdrop").classList.contains("open")) {
+        if (e.key === "Escape") closeEditor();
+        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) saveEditor();
+        return;
+      }
+      // Don't hijack copy/paste while typing in a field.
+      const tag = (e.target.tagName || "").toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select") return;
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "c") {
+        if (selection.size) { e.preventDefault(); copySelection(); }
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "v") {
+        if (clipboard) { e.preventDefault(); pasteSelection(); }
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a") {
+        e.preventDefault();
+        allDayKeys().forEach((k) => selection.add(k));
+        applySelectionClasses();
+        updateSelectionStatus();
+      } else if (e.key === "Escape") {
+        clearSelection();
+      }
     });
   }
 
@@ -505,7 +671,7 @@
   }
 
   // Show the app when signed in, the login screen otherwise.
-  async function handleSession(session) {
+  function handleSession(session) {
     const user = session ? session.user : null;
     currentUser = user;
     if (user) {
@@ -513,8 +679,16 @@
       document.body.classList.add("authed");
       if (loadedUserId !== user.id) {
         loadedUserId = user.id;
-        await loadPlan();
-        renderAll();
+        // Defer the DB read: supabase-js holds an auth lock during the
+        // onAuthStateChange callback, and awaiting a query inside it can
+        // deadlock so the plan never loads. Running it on the next tick
+        // (outside the callback) lets the load and subsequent saves work.
+        setSaveStatus("Loading…");
+        setTimeout(async () => {
+          await loadPlan();
+          renderAll();
+          setSaveStatus("");
+        }, 0);
       }
     } else {
       loadedUserId = null;
