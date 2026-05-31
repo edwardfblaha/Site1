@@ -109,7 +109,8 @@
 
   // Debounced save so rapid edits collapse into a single upsert.
   function savePlan() {
-    if (!sb || !currentUser) return;
+    if (!sb) { setSaveStatus("Not saved: Supabase not configured"); return; }
+    if (!currentUser) { setSaveStatus("Not saved: not signed in"); return; }
     setSaveStatus("Saving…");
     clearTimeout(saveTimer);
     saveTimer = setTimeout(savePlanNow, 400);
