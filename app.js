@@ -155,39 +155,49 @@
       for (let i = 0; i < 7; i++) {
         const date = addDays(weekStart, i);
         const key = isoOf(date);
-        week.appendChild(renderDay(key, date, i, key === todayISO));
+        week.appendChild(renderDay(key, date, i, key === todayISO, key < todayISO));
       }
       cal.appendChild(week);
     }
   }
 
-  function renderDay(key, date, dayIdx, isToday) {
+  function renderDay(key, date, dayIdx, isToday, isPast) {
     const d = getDay(key);
     const amType = d.type ? TYPE_BY_ID[d.type] : null;
     const pmType = d.pmType ? TYPE_BY_ID[d.pmType] : null;
-    const dbl = isDouble(d);
+    const amHas = (d.mileage || 0) > 0 || !!d.type || !!d.note;
+    const pmHas = (d.pmMileage || 0) > 0 || !!d.pmType || !!d.pmNote;
     const total = dayMileage(d);
 
     const cell = document.createElement("button");
-    cell.className = "day" + (isToday ? " is-today" : "") + (dayHasContent(d) ? "" : " is-empty");
-    cell.style.borderLeftColor = amType ? amType.color : "var(--t-rest)";
+    cell.className =
+      "day" +
+      (isToday ? " is-today" : "") +
+      (!isToday && isPast ? " is-past" : "") +
+      (dayHasContent(d) ? "" : " is-empty");
+    cell.style.borderLeftColor = (amType || pmType) ? (amType || pmType).color : "var(--t-rest)";
     cell.setAttribute("aria-label", `${DAY_NAMES[dayIdx]} ${key} — edit`);
 
     const mileageClass = total > 0 ? "" : " zero";
 
-    // Doubles get a stacked AM/PM breakdown; single runs keep one type pill.
+    // Either session is optional. Show a stacked AM/PM breakdown whenever
+    // both run, or a single labelled PM row for a PM-only day. A plain
+    // AM-only day keeps the compact single type pill.
+    const session = (badge, mi, t) =>
+      `<div class="session"><span class="session-badge">${badge}</span>` +
+      `<span class="session-dot" style="background:${t ? t.color : "var(--t-rest)"}"></span>` +
+      `<span class="session-mi">${round(mi)} ${unitLabel()}</span>` +
+      (t ? `<span class="session-name">${t.label}</span>` : "") +
+      `</div>`;
+
     let body = "";
-    if (dbl) {
-      const session = (badge, mi, t) =>
-        `<div class="session"><span class="session-badge">${badge}</span>` +
-        `<span class="session-dot" style="background:${t ? t.color : "var(--t-rest)"}"></span>` +
-        `<span class="session-mi">${round(mi)} ${unitLabel()}</span>` +
-        (t ? `<span class="session-name">${t.label}</span>` : "") +
-        `</div>`;
+    if (amHas && pmHas) {
       body = `<div class="day-sessions">
           ${session("AM", d.mileage || 0, amType)}
           ${session("PM", d.pmMileage || 0, pmType)}
         </div>`;
+    } else if (pmHas) {
+      body = `<div class="day-sessions">${session("PM", d.pmMileage || 0, pmType)}</div>`;
     } else if (amType) {
       body = `<span class="day-type" style="background:${amType.color}">${amType.label}</span>`;
     }

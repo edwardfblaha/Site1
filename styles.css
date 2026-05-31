@@ -1,30 +1,30 @@
 :root {
-  /* Surfaces */
-  --bg: #0f1220;
-  --bg-2: #161a2c;
-  --surface: #1d2238;
-  --surface-2: #242a45;
-  --line: #303755;
-  --text: #eef1fb;
-  --text-dim: #a8afce;
-  --text-faint: #6f769a;
+  /* Surfaces — light theme */
+  --bg: #eef1f7;
+  --bg-2: #e4e8f2;
+  --surface: #ffffff;
+  --surface-2: #f1f4fa;
+  --line: #d4dae6;
+  --text: #1b2138;
+  --text-dim: #515a76;
+  --text-faint: #8b93ab;
 
   /* Workout type colors — chosen to be vivid and easy to distinguish */
-  --t-easy: #3aa0ff;     /* easy / recovery — calm blue */
+  --t-easy: #2f8fef;     /* easy / recovery — calm blue */
   --t-long: #7c5cff;     /* long run — purple */
-  --t-tempo: #ffb020;    /* tempo — amber */
-  --t-threshold: #ff7a00;/* threshold — orange */
+  --t-tempo: #f5a201;    /* tempo — amber */
+  --t-threshold: #f56e00;/* threshold — orange */
   --t-vo2: #ff3b6b;      /* VO2 — hot pink/red */
   --t-anaerobic: #e11d2e;/* anaerobic — deep red */
-  --t-rest: #4b5270;     /* rest — slate */
+  --t-rest: #9aa3bd;     /* rest — slate */
 
-  --strides: #2ee6a6;    /* strides — green */
-  --hills: #f5d020;      /* hill sprints — gold */
-  --double: #19c3e6;     /* double — cyan */
+  --strides: #16c98a;    /* strides — green */
+  --hills: #f5c31a;      /* hill sprints — gold */
+  --double: #12b6da;     /* double — cyan */
 
   --radius: 14px;
   --radius-sm: 9px;
-  --shadow: 0 10px 30px rgba(0,0,0,.35);
+  --shadow: 0 18px 44px rgba(40,52,86,.18);
   --font: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
 }
 
@@ -33,8 +33,8 @@
 html, body {
   margin: 0;
   background:
-    radial-gradient(1200px 600px at 80% -10%, rgba(124,92,255,.16), transparent 60%),
-    radial-gradient(900px 500px at -10% 10%, rgba(58,160,255,.12), transparent 55%),
+    radial-gradient(1200px 600px at 80% -10%, rgba(124,92,255,.10), transparent 60%),
+    radial-gradient(900px 500px at -10% 10%, rgba(47,143,239,.10), transparent 55%),
     var(--bg);
   color: var(--text);
   font-family: var(--font);
@@ -103,8 +103,8 @@ html, body {
   transition: transform .08s, background .15s, border-color .15s;
 }
 .btn:active { transform: translateY(1px); }
-.btn-primary { background: var(--t-easy); color: #06121f; }
-.btn-primary:hover { background: #5cb1ff; }
+.btn-primary { background: var(--t-easy); color: #ffffff; }
+.btn-primary:hover { background: #1f7fdc; }
 .btn-ghost { background: var(--surface); color: var(--text); border-color: var(--line); }
 .btn-ghost:hover { background: var(--surface-2); }
 .btn-danger-ghost { background: transparent; color: #ff8b8b; border-color: rgba(225,29,46,.4); }
@@ -180,14 +180,23 @@ html, body {
   transition: transform .1s, border-color .15s, background .15s;
 }
 .day:hover { transform: translateY(-2px); background: var(--surface-2); }
-.day.is-today { box-shadow: 0 0 0 2px var(--t-easy); }
 .day.is-empty { opacity: .82; }
+
+/* Past days are dulled so today and the road ahead stand out. */
+.day.is-past { opacity: .5; filter: saturate(.45); background: var(--bg-2); }
+.day.is-past:hover { opacity: .8; filter: none; }
+
+/* Today gets a clear ring and a subtle lift. */
+.day.is-today {
+  box-shadow: 0 0 0 2px var(--t-easy), 0 10px 24px rgba(47,143,239,.22);
+  background: var(--surface);
+}
 
 .day-top { display: flex; align-items: center; justify-content: space-between; }
 .day-name { font-size: 11px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: .5px; }
 .day-date { font-size: 11px; color: var(--text-faint); }
 
-.day-mileage { font-size: 26px; font-weight: 800; letter-spacing: -1px; line-height: 1; color: #ffffff; }
+.day-mileage { font-size: 26px; font-weight: 800; letter-spacing: -1px; line-height: 1; color: var(--text); }
 .day-mileage small { font-size: 12px; font-weight: 600; color: var(--text-faint); }
 .day-mileage.zero { color: var(--text-faint); }
 
@@ -196,7 +205,7 @@ html, body {
 .session { display: flex; align-items: center; gap: 7px; font-size: 12px; line-height: 1.2; }
 .session-badge { font-size: 10px; font-weight: 800; letter-spacing: .5px; color: var(--text-faint); width: 22px; flex: none; }
 .session-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
-.session-mi { font-weight: 800; color: #ffffff; }
+.session-mi { font-weight: 800; color: var(--text); }
 .session-name { color: var(--text-dim); }
 
 .day-type {
@@ -230,23 +239,26 @@ html, body {
    any reliance on the UA `hidden` attribute being overridden by author CSS. */
 .modal-backdrop {
   position: fixed; inset: 0; z-index: 50;
-  background: rgba(7,9,18,.66); backdrop-filter: blur(4px);
+  background: rgba(20,28,52,.45); backdrop-filter: blur(4px);
   display: none; align-items: center; justify-content: center; padding: 20px;
 }
 .modal-backdrop.open { display: flex; }
 .modal {
   width: min(520px, 100%);
-  background: var(--bg-2); border: 1px solid var(--line);
+  max-height: 90vh;
+  display: flex; flex-direction: column;
+  background: var(--surface); border: 1px solid var(--line);
   border-radius: 18px; box-shadow: var(--shadow);
   animation: pop .14s ease-out;
 }
 @keyframes pop { from { transform: scale(.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-.modal-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 4px; }
+.modal-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 4px; flex: none; }
 .modal-head h2 { margin: 0; font-size: 18px; font-weight: 700; }
-.modal-body { padding: 14px 20px; display: flex; flex-direction: column; gap: 16px; }
+/* Body scrolls when the editor is taller than the viewport. */
+.modal-body { padding: 14px 20px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; flex: 1 1 auto; }
 .field-block { display: flex; flex-direction: column; gap: 8px; }
 .field-block input, .field-block textarea { width: 100%; }
-.modal-foot { display: flex; justify-content: space-between; padding: 14px 20px 20px; }
+.modal-foot { display: flex; justify-content: space-between; padding: 14px 20px 20px; flex: none; }
 
 /* AM / PM run blocks inside the editor */
 .run-block {
