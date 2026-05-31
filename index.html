@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=3" />
+  <link rel="stylesheet" href="styles.css?v=4" />
 </head>
 <body>
   <header class="topbar">
@@ -80,14 +80,43 @@
       </div>
 
       <div class="modal-body">
-        <label class="field field-block">
-          <span class="field-label">Mileage</span>
-          <input type="number" id="dMileage" min="0" step="0.1" placeholder="0" />
-        </label>
+        <div class="run-block">
+          <div class="run-head">
+            <span class="run-badge run-am">AM</span>
+            <span class="run-title">Morning run</span>
+          </div>
+          <label class="field field-block">
+            <span class="field-label">Mileage</span>
+            <input type="number" id="dMileage" min="0" step="0.1" placeholder="0" />
+          </label>
+          <div class="field-block">
+            <span class="field-label">Workout type</span>
+            <div class="type-grid" id="typeGrid"></div>
+          </div>
+          <label class="field field-block">
+            <span class="field-label">Notes (pace, route, reps…)</span>
+            <textarea id="dNote" rows="2" placeholder="e.g. 6 x 1k @ threshold, 90s float"></textarea>
+          </label>
+        </div>
 
-        <div class="field-block">
-          <span class="field-label">Workout type</span>
-          <div class="type-grid" id="typeGrid"></div>
+        <div class="run-block">
+          <div class="run-head">
+            <span class="run-badge run-pm">PM</span>
+            <span class="run-title">Evening run</span>
+            <span class="run-hint">optional — fill in to make it a double</span>
+          </div>
+          <label class="field field-block">
+            <span class="field-label">Mileage</span>
+            <input type="number" id="dPmMileage" min="0" step="0.1" placeholder="0" />
+          </label>
+          <div class="field-block">
+            <span class="field-label">Workout type</span>
+            <div class="type-grid" id="typePmGrid"></div>
+          </div>
+          <label class="field field-block">
+            <span class="field-label">Notes</span>
+            <textarea id="dPmNote" rows="2" placeholder="e.g. 4 mi easy shakeout"></textarea>
+          </label>
         </div>
 
         <div class="field-block">
@@ -101,17 +130,8 @@
               <input type="checkbox" id="dHills" />
               <span class="toggle-pill chip-hills">Hill sprints</span>
             </label>
-            <label class="toggle">
-              <input type="checkbox" id="dDouble" />
-              <span class="toggle-pill chip-double">Double</span>
-            </label>
           </div>
         </div>
-
-        <label class="field field-block">
-          <span class="field-label">Notes (pace, route, reps…)</span>
-          <textarea id="dNote" rows="3" placeholder="e.g. 6 x 1k @ threshold, 90s float"></textarea>
-        </label>
       </div>
 
       <div class="modal-foot">
@@ -121,6 +141,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=3"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>

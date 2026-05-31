@@ -187,9 +187,17 @@ html, body {
 .day-name { font-size: 11px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: .5px; }
 .day-date { font-size: 11px; color: var(--text-faint); }
 
-.day-mileage { font-size: 26px; font-weight: 800; letter-spacing: -1px; line-height: 1; }
+.day-mileage { font-size: 26px; font-weight: 800; letter-spacing: -1px; line-height: 1; color: #ffffff; }
 .day-mileage small { font-size: 12px; font-weight: 600; color: var(--text-faint); }
 .day-mileage.zero { color: var(--text-faint); }
+
+/* AM / PM split shown on double days */
+.day-sessions { display: flex; flex-direction: column; gap: 5px; }
+.session { display: flex; align-items: center; gap: 7px; font-size: 12px; line-height: 1.2; }
+.session-badge { font-size: 10px; font-weight: 800; letter-spacing: .5px; color: var(--text-faint); width: 22px; flex: none; }
+.session-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.session-mi { font-weight: 800; color: #ffffff; }
+.session-name { color: var(--text-dim); }
 
 .day-type {
   display: inline-flex; align-self: flex-start; align-items: center; gap: 6px;
@@ -239,6 +247,21 @@ html, body {
 .field-block { display: flex; flex-direction: column; gap: 8px; }
 .field-block input, .field-block textarea { width: 100%; }
 .modal-foot { display: flex; justify-content: space-between; padding: 14px 20px 20px; }
+
+/* AM / PM run blocks inside the editor */
+.run-block {
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.run-head { display: flex; align-items: center; gap: 8px; }
+.run-badge { font-size: 11px; font-weight: 800; letter-spacing: .5px; color: #06121f; padding: 2px 9px; border-radius: 999px; }
+.run-am { background: var(--t-tempo); }
+.run-pm { background: var(--double); }
+.run-title { font-size: 14px; font-weight: 700; }
+.run-hint { font-size: 11px; color: var(--text-faint); margin-left: auto; }
 
 .type-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .type-opt {

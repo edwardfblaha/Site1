@@ -77,10 +77,27 @@
   }
 
   function getDay(key) {
-    return plan.days[key] || { mileage: 0, type: "", note: "", strides: false, hills: false, double: false };
+    return (
+      plan.days[key] || {
+        mileage: 0, type: "", note: "",
+        pmMileage: 0, pmType: "", pmNote: "",
+        strides: false, hills: false,
+      }
+    );
+  }
+  // A day is a "double" when it has any PM-session content.
+  function isDouble(d) {
+    return (d.pmMileage || 0) > 0 || !!d.pmType || !!d.pmNote;
+  }
+  // Total mileage for a day = AM run + PM run.
+  function dayMileage(d) {
+    return (d.mileage || 0) + (d.pmMileage || 0);
   }
   function dayHasContent(d) {
-    return d.mileage > 0 || d.type || d.note || d.strides || d.hills || d.double;
+    return (
+      d.mileage > 0 || d.type || d.note ||
+      isDouble(d) || d.strides || d.hills
+    );
   }
 
   // ---- Rendering ----
@@ -114,7 +131,7 @@
     const weekTotals = [];
     for (let w = 0; w < plan.weeks; w++) {
       let total = 0;
-      for (let i = 0; i < 7; i++) total += getDay(isoOf(addDays(start, w * 7 + i))).mileage || 0;
+      for (let i = 0; i < 7; i++) total += dayMileage(getDay(isoOf(addDays(start, w * 7 + i))));
       weekTotals.push(total);
     }
     const peak = Math.max(1, ...weekTotals);
@@ -146,31 +163,48 @@
 
   function renderDay(key, date, dayIdx, isToday) {
     const d = getDay(key);
-    const type = d.type ? TYPE_BY_ID[d.type] : null;
+    const amType = d.type ? TYPE_BY_ID[d.type] : null;
+    const pmType = d.pmType ? TYPE_BY_ID[d.pmType] : null;
+    const dbl = isDouble(d);
+    const total = dayMileage(d);
 
     const cell = document.createElement("button");
     cell.className = "day" + (isToday ? " is-today" : "") + (dayHasContent(d) ? "" : " is-empty");
-    cell.style.borderLeftColor = type ? type.color : "var(--t-rest)";
+    cell.style.borderLeftColor = amType ? amType.color : "var(--t-rest)";
     cell.setAttribute("aria-label", `${DAY_NAMES[dayIdx]} ${key} — edit`);
 
-    const mileageClass = d.mileage > 0 ? "" : " zero";
-    const typeHtml = type
-      ? `<span class="day-type" style="background:${type.color}">${type.label}</span>`
-      : "";
+    const mileageClass = total > 0 ? "" : " zero";
+
+    // Doubles get a stacked AM/PM breakdown; single runs keep one type pill.
+    let body = "";
+    if (dbl) {
+      const session = (badge, mi, t) =>
+        `<div class="session"><span class="session-badge">${badge}</span>` +
+        `<span class="session-dot" style="background:${t ? t.color : "var(--t-rest)"}"></span>` +
+        `<span class="session-mi">${round(mi)} ${unitLabel()}</span>` +
+        (t ? `<span class="session-name">${t.label}</span>` : "") +
+        `</div>`;
+      body = `<div class="day-sessions">
+          ${session("AM", d.mileage || 0, amType)}
+          ${session("PM", d.pmMileage || 0, pmType)}
+        </div>`;
+    } else if (amType) {
+      body = `<span class="day-type" style="background:${amType.color}">${amType.label}</span>`;
+    }
+
     const noteHtml = d.note ? `<span class="day-note">${escapeHtml(d.note)}</span>` : "";
 
     let mods = "";
     if (d.strides) mods += `<span class="chip chip-strides">Strides</span>`;
     if (d.hills) mods += `<span class="chip chip-hills">Hills</span>`;
-    if (d.double) mods += `<span class="chip chip-double">Double</span>`;
 
     cell.innerHTML = `
       <div class="day-top">
         <span class="day-name">${DAY_NAMES[dayIdx]}</span>
         <span class="day-date">${date.getMonth() + 1}/${date.getDate()}</span>
       </div>
-      <span class="day-mileage${mileageClass}">${round(d.mileage)}<small> ${unitLabel()}</small></span>
-      ${typeHtml}
+      <span class="day-mileage${mileageClass}">${round(total)}<small> ${unitLabel()}</small></span>
+      ${body}
       ${noteHtml}
       ${mods ? `<div class="day-mods">${mods}</div>` : ""}`;
 
@@ -189,9 +223,10 @@
       let weekTotal = 0;
       for (let i = 0; i < 7; i++) {
         const d = getDay(isoOf(addDays(start, w * 7 + i)));
-        total += d.mileage || 0;
-        weekTotal += d.mileage || 0;
+        total += dayMileage(d);
+        weekTotal += dayMileage(d);
         if (qualityTypes.has(d.type)) workouts++;
+        if (qualityTypes.has(d.pmType)) workouts++;
       }
       peak = Math.max(peak, weekTotal);
     }
@@ -214,8 +249,8 @@
   }
 
   // ---- Day editor modal ----
-  function buildTypeGrid() {
-    const grid = $("typeGrid");
+  function buildTypeGrid(gridId) {
+    const grid = $(gridId);
     grid.innerHTML = "";
     for (const t of TYPES) {
       const opt = document.createElement("button");
@@ -224,26 +259,30 @@
       opt.dataset.type = t.id;
       opt.innerHTML = `<span class="legend-dot" style="background:${t.color}"></span>${t.label}`;
       opt.addEventListener("click", () => {
-        grid.querySelectorAll(".type-opt").forEach((o) => o.classList.remove("selected"));
-        opt.classList.add("selected");
-        opt.style.borderColor = t.color;
+        const wasSelected = opt.classList.contains("selected");
         grid.querySelectorAll(".type-opt").forEach((o) => {
-          if (o !== opt) o.style.borderColor = "";
+          o.classList.remove("selected");
+          o.style.borderColor = "";
         });
+        // Allow clicking the active type to clear it.
+        if (!wasSelected) {
+          opt.classList.add("selected");
+          opt.style.borderColor = t.color;
+        }
       });
       grid.appendChild(opt);
     }
   }
 
-  function selectedType() {
-    const sel = $("typeGrid").querySelector(".type-opt.selected");
+  function selectedType(gridId) {
+    const sel = $(gridId).querySelector(".type-opt.selected");
     return sel ? sel.dataset.type : "";
   }
-  function setSelectedType(id) {
-    $("typeGrid").querySelectorAll(".type-opt").forEach((o) => {
+  function setSelectedType(gridId, id) {
+    $(gridId).querySelectorAll(".type-opt").forEach((o) => {
       const on = o.dataset.type === id;
       o.classList.toggle("selected", on);
-      o.style.borderColor = on ? TYPE_BY_ID[id].color : "";
+      o.style.borderColor = on && id ? TYPE_BY_ID[id].color : "";
     });
   }
 
@@ -252,11 +291,13 @@
     const d = getDay(key);
     $("modalTitle").textContent = `${DAY_NAMES[dayIdx]} · ${date.toLocaleDateString(undefined, { month: "long", day: "numeric" })}`;
     $("dMileage").value = d.mileage || "";
-    setSelectedType(d.type || "");
+    setSelectedType("typeGrid", d.type || "");
+    $("dNote").value = d.note || "";
+    $("dPmMileage").value = d.pmMileage || "";
+    setSelectedType("typePmGrid", d.pmType || "");
+    $("dPmNote").value = d.pmNote || "";
     $("dStrides").checked = !!d.strides;
     $("dHills").checked = !!d.hills;
-    $("dDouble").checked = !!d.double;
-    $("dNote").value = d.note || "";
     $("modalBackdrop").classList.add("open");
     $("dMileage").focus();
   }
@@ -268,13 +309,19 @@
 
   function saveEditor() {
     if (!editingKey) return;
+    const pmMileage = Math.max(0, parseFloat($("dPmMileage").value) || 0);
+    const pmType = selectedType("typePmGrid");
+    const pmNote = $("dPmNote").value.trim();
     const entry = {
       mileage: Math.max(0, parseFloat($("dMileage").value) || 0),
-      type: selectedType(),
+      type: selectedType("typeGrid"),
+      note: $("dNote").value.trim(),
+      pmMileage,
+      pmType,
+      pmNote,
+      double: pmMileage > 0 || !!pmType || !!pmNote,
       strides: $("dStrides").checked,
       hills: $("dHills").checked,
-      double: $("dDouble").checked,
-      note: $("dNote").value.trim(),
     };
     if (dayHasContent(entry)) plan.days[editingKey] = entry;
     else delete plan.days[editingKey];
@@ -330,7 +377,8 @@
 
   // ---- Wire up events ----
   function init() {
-    buildTypeGrid();
+    buildTypeGrid("typeGrid");
+    buildTypeGrid("typePmGrid");
     renderAll();
 
     $("startDate").addEventListener("change", (e) => {
