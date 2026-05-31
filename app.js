@@ -549,18 +549,8 @@
       // If the project requires email confirmation there's no session yet.
       if (!data.session) setAuthMsg("Account created — check your email to confirm, then log in.");
     }
-    async function googleLogin() {
-      setAuthMsg("");
-      const { error } = await sb.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: window.location.href },
-      });
-      if (error) setAuthMsg(error.message, true);
-    }
-
     $("loginBtn").addEventListener("click", login);
     $("signupBtn").addEventListener("click", signup);
-    $("googleBtn").addEventListener("click", googleLogin);
     $("logoutBtn").addEventListener("click", () => sb.auth.signOut());
     $("authPassword").addEventListener("keydown", (e) => { if (e.key === "Enter") login(); });
 
