@@ -537,13 +537,25 @@
     const email = () => $("authEmail").value.trim();
     const password = () => $("authPassword").value;
 
+    // Require both fields up front. Calling Supabase with an empty email or
+    // password is interpreted as an anonymous sign-in, which surfaces the
+    // confusing "Anonymous sign-ins are disabled" error.
+    function haveCredentials() {
+      if (!email() || !password()) {
+        setAuthMsg("Enter your email and password.", true);
+        return false;
+      }
+      return true;
+    }
     async function login() {
       setAuthMsg("");
+      if (!haveCredentials()) return;
       const { error } = await sb.auth.signInWithPassword({ email: email(), password: password() });
       if (error) setAuthMsg(error.message, true);
     }
     async function signup() {
       setAuthMsg("");
+      if (!haveCredentials()) return;
       const { data, error } = await sb.auth.signUp({ email: email(), password: password() });
       if (error) { setAuthMsg(error.message, true); return; }
       // If the project requires email confirmation there's no session yet.
