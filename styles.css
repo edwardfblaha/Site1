@@ -16,6 +16,8 @@
   --t-threshold: #f56e00;/* threshold — orange */
   --t-vo2: #ff3b6b;      /* VO2 — hot pink/red */
   --t-anaerobic: #e11d2e;/* anaerobic — deep red */
+  --t-race: #0b0e16;     /* race day — checkered-flag near-black */
+  --race-accent: #f5b301;/* race day — gold accent */
   --t-rest: #9aa3bd;     /* rest — slate */
 
   --strides: #16c98a;    /* strides — green */
@@ -191,6 +193,15 @@ html, body {
   box-shadow: 0 0 0 2px var(--t-easy), 0 10px 24px rgba(47,143,239,.22);
   background: var(--surface);
 }
+
+/* Race day — checkered-flag accent: gold ring, dark left edge, special tint. */
+.day.is-race {
+  background: linear-gradient(180deg, rgba(245,179,1,.16), var(--surface) 60%);
+  border-color: var(--race-accent);
+  border-left-color: var(--t-race) !important;
+  box-shadow: 0 0 0 2px var(--race-accent), 0 12px 26px rgba(245,179,1,.28);
+}
+.day.is-race.is-past { opacity: .6; filter: saturate(.6); }
 
 .day-top { display: flex; align-items: center; justify-content: space-between; }
 .day-name { font-size: 11px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: .5px; }

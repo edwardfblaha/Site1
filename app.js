@@ -12,6 +12,7 @@
     { id: "threshold", label: "Threshold", color: "var(--t-threshold)" },
     { id: "vo2",       label: "VO2",       color: "var(--t-vo2)" },
     { id: "anaerobic", label: "Anaerobic", color: "var(--t-anaerobic)" },
+    { id: "race",      label: "Race",      color: "var(--t-race)" },
     { id: "rest",      label: "Rest",      color: "var(--t-rest)" },
   ];
   const TYPE_BY_ID = Object.fromEntries(TYPES.map((t) => [t.id, t]));
@@ -167,6 +168,7 @@
     const pmType = d.pmType ? TYPE_BY_ID[d.pmType] : null;
     const amHas = (d.mileage || 0) > 0 || !!d.type || !!d.note;
     const pmHas = (d.pmMileage || 0) > 0 || !!d.pmType || !!d.pmNote;
+    const isRace = d.type === "race" || d.pmType === "race";
     const total = dayMileage(d);
 
     const cell = document.createElement("button");
@@ -174,6 +176,7 @@
       "day" +
       (isToday ? " is-today" : "") +
       (!isToday && isPast ? " is-past" : "") +
+      (isRace ? " is-race" : "") +
       (dayHasContent(d) ? "" : " is-empty");
     cell.style.borderLeftColor = (amType || pmType) ? (amType || pmType).color : "var(--t-rest)";
     cell.setAttribute("aria-label", `${DAY_NAMES[dayIdx]} ${key} — edit`);
@@ -187,7 +190,7 @@
       `<div class="session"><span class="session-badge">${badge}</span>` +
       `<span class="session-dot" style="background:${t ? t.color : "var(--t-rest)"}"></span>` +
       `<span class="session-mi">${round(mi)} ${unitLabel()}</span>` +
-      (t ? `<span class="session-name">${t.label}</span>` : "") +
+      (t ? `<span class="session-name">${t.id === "race" ? "🏁 " : ""}${t.label}</span>` : "") +
       `</div>`;
 
     let body = "";
@@ -199,7 +202,9 @@
     } else if (pmHas) {
       body = `<div class="day-sessions">${session("PM", d.pmMileage || 0, pmType)}</div>`;
     } else if (amType) {
-      body = `<span class="day-type" style="background:${amType.color}">${amType.label}</span>`;
+      const pillText = amType.id === "race" ? "#fff" : "#06121f";
+      const label = amType.id === "race" ? "🏁 Race" : amType.label;
+      body = `<span class="day-type" style="background:${amType.color};color:${pillText}">${label}</span>`;
     }
 
     const noteHtml = d.note ? `<span class="day-note">${escapeHtml(d.note)}</span>` : "";
