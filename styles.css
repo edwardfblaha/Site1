@@ -309,6 +309,49 @@ html, body {
 }
 .toggle input:checked + .toggle-pill { opacity: 1; filter: none; transform: scale(1.02); }
 
+/* ---------- Auth screen ---------- */
+/* Full-screen gate shown until sign-in; matches the app's theme tokens. */
+.auth-screen {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  background:
+    radial-gradient(1100px 560px at 80% -10%, rgba(124,92,255,.12), transparent 60%),
+    radial-gradient(800px 460px at -10% 10%, rgba(47,143,239,.12), transparent 55%),
+    var(--bg);
+}
+body.authed .auth-screen { display: none; }
+
+.auth-card {
+  width: min(380px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  padding: 28px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.auth-brand { display: flex; align-items: center; gap: 10px; }
+.auth-brand .brand-name { font-size: 28px; }
+.auth-sub { margin: -6px 0 6px; color: var(--text-faint); font-size: 13px; font-weight: 500; }
+
+.auth-actions { display: flex; gap: 10px; }
+.auth-actions .btn { flex: 1; }
+
+.auth-divider { display: flex; align-items: center; gap: 10px; color: var(--text-faint); font-size: 12px; font-weight: 600; }
+.auth-divider::before, .auth-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+.auth-google { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.g-mark { font-weight: 800; color: #4285F4; }
+
+.auth-msg { min-height: 18px; margin: 0; font-size: 13px; color: var(--text-dim); }
+.auth-msg.error { color: #d23b3b; }
+
+/* Logout control — only visible once signed in. */
+#logoutBtn, .user-email { display: none; }
+body.authed #logoutBtn { display: inline-flex; }
+body.authed .user-email { display: inline-block; }
+.user-email { align-self: center; color: var(--text-faint); font-size: 12px; }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 1100px) {
   .week { grid-template-columns: 1fr; }

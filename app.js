@@ -21,7 +21,7 @@
 
   // ---- State ----
   /** plan.days is keyed by ISO date 'YYYY-MM-DD'. */
-  let plan = loadPlan();
+  let plan = defaultPlan(); // replaced with the user's plan after sign-in
   let editingKey = null; // the day currently open in the modal
 
   // ---- Date helpers ----
@@ -50,7 +50,12 @@
   const fmtRange = (a, b) =>
     `${a.toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${b.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
 
-  // ---- Persistence ----
+  // ---- Supabase client & persistence ----
+  let sb = null;           // Supabase client (created in initAuth)
+  let currentUser = null;  // the logged-in user, or null
+  let loadedUserId = null; // guards against redundant reloads
+  let saveTimer = null;    // debounce handle for saves
+
   function defaultPlan() {
     return {
       startDate: isoOf(mondayOf(new Date())),
@@ -59,21 +64,68 @@
       days: {},
     };
   }
-  function loadPlan() {
+
+  // One-time import of any plan left in this browser's localStorage, so an
+  // existing local plan is preserved when a user first signs in.
+  function readLocalPlan() {
     try {
       const raw = localStorage.getItem(STORE_KEY);
-      if (!raw) return defaultPlan();
+      if (!raw) return null;
       const p = JSON.parse(raw);
       return { ...defaultPlan(), ...p, days: p.days || {} };
     } catch {
-      return defaultPlan();
+      return null;
     }
   }
-  function savePlan() {
+
+  // Load this user's plan row from Supabase into `plan`.
+  async function loadPlan() {
+    if (!sb || !currentUser) {
+      plan = defaultPlan();
+      return;
+    }
     try {
-      localStorage.setItem(STORE_KEY, JSON.stringify(plan));
-    } catch {
-      /* storage may be unavailable; the app still works in-memory */
+      const { data, error } = await sb
+        .from("plans")
+        .select("data")
+        .eq("user_id", currentUser.id)
+        .maybeSingle();
+      if (error) throw error;
+      if (data && data.data) {
+        const p = data.data;
+        plan = { ...defaultPlan(), ...p, days: p.days || {} };
+      } else {
+        // No saved plan yet — adopt any local plan and push it to the backend.
+        const local = readLocalPlan();
+        plan = local || defaultPlan();
+        if (local) await savePlanNow();
+      }
+    } catch (e) {
+      console.error("base: could not load plan", e);
+      plan = defaultPlan();
+    }
+  }
+
+  // Debounced save so rapid edits collapse into a single upsert.
+  function savePlan() {
+    if (!sb || !currentUser) return;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(savePlanNow, 400);
+  }
+  async function savePlanNow() {
+    if (!sb || !currentUser) return;
+    try {
+      const { error } = await sb.from("plans").upsert(
+        {
+          user_id: currentUser.id,
+          data: plan,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id" }
+      );
+      if (error) throw error;
+    } catch (e) {
+      console.error("base: could not save plan", e);
     }
   }
 
@@ -439,6 +491,88 @@
     });
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
-  else init();
+  // ---- Authentication (Supabase) ----
+  function setAuthMsg(text, isError) {
+    const el = $("authMsg");
+    el.textContent = text || "";
+    el.classList.toggle("error", !!isError);
+  }
+
+  function credentialsMissing() {
+    const url = window.SUPABASE_URL;
+    const key = window.SUPABASE_ANON_KEY;
+    return !url || !key || url === "SUPABASE_URL" || key === "SUPABASE_ANON_KEY";
+  }
+
+  // Show the app when signed in, the login screen otherwise.
+  async function handleSession(session) {
+    const user = session ? session.user : null;
+    currentUser = user;
+    if (user) {
+      $("userEmail").textContent = user.email || "";
+      document.body.classList.add("authed");
+      if (loadedUserId !== user.id) {
+        loadedUserId = user.id;
+        await loadPlan();
+        renderAll();
+      }
+    } else {
+      loadedUserId = null;
+      document.body.classList.remove("authed");
+      plan = defaultPlan();
+    }
+  }
+
+  function initAuth() {
+    if (!window.supabase || !window.supabase.createClient) {
+      setAuthMsg("Could not load Supabase. Check your connection and refresh.", true);
+      return;
+    }
+    if (credentialsMissing()) {
+      setAuthMsg("Add your Supabase URL and anon key in config.js to enable sign-in.", true);
+      return;
+    }
+    sb = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+
+    const email = () => $("authEmail").value.trim();
+    const password = () => $("authPassword").value;
+
+    async function login() {
+      setAuthMsg("");
+      const { error } = await sb.auth.signInWithPassword({ email: email(), password: password() });
+      if (error) setAuthMsg(error.message, true);
+    }
+    async function signup() {
+      setAuthMsg("");
+      const { data, error } = await sb.auth.signUp({ email: email(), password: password() });
+      if (error) { setAuthMsg(error.message, true); return; }
+      // If the project requires email confirmation there's no session yet.
+      if (!data.session) setAuthMsg("Account created — check your email to confirm, then log in.");
+    }
+    async function googleLogin() {
+      setAuthMsg("");
+      const { error } = await sb.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: window.location.href },
+      });
+      if (error) setAuthMsg(error.message, true);
+    }
+
+    $("loginBtn").addEventListener("click", login);
+    $("signupBtn").addEventListener("click", signup);
+    $("googleBtn").addEventListener("click", googleLogin);
+    $("logoutBtn").addEventListener("click", () => sb.auth.signOut());
+    $("authPassword").addEventListener("keydown", (e) => { if (e.key === "Enter") login(); });
+
+    sb.auth.onAuthStateChange((_event, session) => handleSession(session));
+    sb.auth.getSession().then(({ data }) => handleSession(data.session));
+  }
+
+  function bootstrap() {
+    init();      // build the app UI + wire its events (hidden until sign-in)
+    initAuth();  // wire the login screen and resolve the current session
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bootstrap);
+  else bootstrap();
 })();

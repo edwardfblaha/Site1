@@ -18,7 +18,9 @@ calendar and see the shape of the plan at a glance:
   - 🟢 **Strides** &nbsp; 🟡 **Hill sprints** &nbsp; 🔵 **Double**
 - **Plan summary**: total volume, average week, peak week, and quality-session count.
 - **Miles or km**, any start Monday, 1–52 weeks.
-- **Export / import** plans as JSON, and autosave to the browser.
+- **Accounts** — sign in (email/password or Google) for a private plan that
+  autosaves to the cloud and syncs across devices.
+- **Export / import** plans as JSON.
 
 The interface is intentionally minimal: vivid colours do the communicating, not chrome.
 
@@ -37,12 +39,80 @@ python3 -m http.server 8000
 
 ## How it works
 
-- `index.html` — markup and the day-editor dialog.
+- `index.html` — markup, the login screen, and the day-editor dialog.
 - `styles.css` — the colour system and responsive week grid.
-- `app.js` — state, rendering, and persistence (vanilla JS, no framework).
+- `app.js` — state, rendering, auth, and persistence (vanilla JS, no framework).
+- `config.js` — your Supabase URL and anon key (see below).
 
-Plans are stored in your browser's `localStorage`, so your work is there when you
-come back. Use **Export** to save a portable copy or move a plan between devices.
+## Accounts & sync (Supabase)
+
+Each user signs in and gets their own private plan that persists across devices
+and browsers. The whole plan (every day, AM/PM sessions, strides, hill sprints,
+race days, units, start date, week count) is stored as one JSON record per user,
+protected by Row Level Security so no one can read another user's data.
+
+### 1. Create a Supabase project
+
+Sign up at <https://supabase.com> and create a project.
+
+### 2. Paste your credentials
+
+Open **`config.js`** and replace the two placeholders:
+
+```js
+window.SUPABASE_URL = "SUPABASE_URL";            // ← paste your Project URL here
+window.SUPABASE_ANON_KEY = "SUPABASE_ANON_KEY";  // ← paste your anon public key here
+```
+
+Find both under **Project Settings → API** in the Supabase dashboard
+("Project URL" and the "anon" / "public" key).
+
+### 3. Create the table (run this SQL)
+
+In the Supabase dashboard open **SQL Editor → New query**, paste the following,
+and click **Run**:
+
+```sql
+-- One private plan per user, stored as JSON, with updated_at.
+create table if not exists public.plans (
+  user_id    uuid        primary key references auth.users (id) on delete cascade,
+  data       jsonb       not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+-- Lock the table down so each user only ever sees their own row.
+alter table public.plans enable row level security;
+
+create policy "plans_select_own"
+  on public.plans for select
+  using (auth.uid() = user_id);
+
+create policy "plans_insert_own"
+  on public.plans for insert
+  with check (auth.uid() = user_id);
+
+create policy "plans_update_own"
+  on public.plans for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+```
+
+> **Note on the schema:** the plan is saved as a single `jsonb` column rather than
+> separate `week_index / day_index / miles / type / notes / pace` columns. That is
+> deliberate — the per-column layout can't hold the app's AM/PM sessions, strides,
+> hill sprints, race days, or plan settings, and you asked for the site to be
+> preserved exactly. The JSON record keeps every feature intact.
+
+### 4. Enable Google sign-in (for the "Continue with Google" button)
+
+In the dashboard go to **Authentication → Providers → Google**, enable it, and
+add your Google OAuth client ID/secret (from the Google Cloud console). Add your
+site's URL to **Authentication → URL Configuration → Redirect URLs**. Email/password
+login works without this step.
+
+Plans autosave to Supabase as you edit. Any plan already saved in your browser is
+imported automatically the first time you sign in. Use **Export** for a portable
+JSON copy.
 
 ## Tips
 
