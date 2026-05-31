@@ -257,12 +257,12 @@
     $("dHills").checked = !!d.hills;
     $("dDouble").checked = !!d.double;
     $("dNote").value = d.note || "";
-    $("modalBackdrop").hidden = false;
+    $("modalBackdrop").classList.add("open");
     $("dMileage").focus();
   }
 
   function closeEditor() {
-    $("modalBackdrop").hidden = true;
+    $("modalBackdrop").classList.remove("open");
     editingKey = null;
   }
 
@@ -370,7 +370,7 @@
       if (e.target === $("modalBackdrop")) closeEditor();
     });
     document.addEventListener("keydown", (e) => {
-      if ($("modalBackdrop").hidden) return;
+      if (!$("modalBackdrop").classList.contains("open")) return;
       if (e.key === "Escape") closeEditor();
       if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) saveEditor();
     });

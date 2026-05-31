@@ -218,14 +218,14 @@ html, body {
 .summary-label { font-size: 13px; color: var(--text-faint); font-weight: 600; }
 
 /* ---------- Modal ---------- */
+/* Hidden by default; shown only when JS adds the `open` class. This avoids
+   any reliance on the UA `hidden` attribute being overridden by author CSS. */
 .modal-backdrop {
   position: fixed; inset: 0; z-index: 50;
   background: rgba(7,9,18,.66); backdrop-filter: blur(4px);
-  display: flex; align-items: center; justify-content: center; padding: 20px;
+  display: none; align-items: center; justify-content: center; padding: 20px;
 }
-/* The author `display: flex` above overrides the UA `hidden` rule, so the
-   modal must be explicitly hidden when the [hidden] attribute is present. */
-.modal-backdrop[hidden] { display: none; }
+.modal-backdrop.open { display: flex; }
 .modal {
   width: min(520px, 100%);
   background: var(--bg-2); border: 1px solid var(--line);
