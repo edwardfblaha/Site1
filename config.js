@@ -15,5 +15,6 @@
    the Row Level Security policies in the SQL setup (see README.md).
    ───────────────────────────────────────────────────────────────────────── */
 
-window.SUPABASE_URL = "SUPABASE_URL";
-window.SUPABASE_ANON_KEY = "SUPABASE_ANON_KEY";
+window.SUPABASE_URL = "https://mrpezldysqzmstitoxew.supabase.co";
+window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ycGV6bGR5c3F6bXN0aXRveGV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyNTQxNjgsImV4cCI6MjA5NTgzMDE2OH0.n4gWJbSis9QPG0TOtBDQmkcxjZ6a9numUUPKoCVqa2k
+";
