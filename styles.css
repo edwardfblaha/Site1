@@ -337,11 +337,29 @@ body.authed .auth-screen { display: none; }
 .auth-actions { display: flex; gap: 10px; }
 .auth-actions .btn { flex: 1; }
 
-.auth-divider { display: flex; align-items: center; gap: 10px; color: var(--text-faint); font-size: 12px; font-weight: 600; }
-.auth-divider::before, .auth-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+/* Mode-based visibility: the card carries .mode-login / .mode-signup /
+   .mode-recovery, and elements opt in via these helper classes. Hidden by
+   default; each mode reveals its own pieces. */
+.account-only, .login-only, .signup-only, .recovery-only { display: none; }
+/* Email + password (shared by login and signup) */
+.mode-login .account-only,
+.mode-signup .account-only { display: flex; }
+/* Login-only controls */
+.mode-login .login-only { display: inline-flex; }
+.mode-login .auth-link.login-only { display: inline; }
+/* Signup-only: the confirm-password field (flex) and its buttons (inline-flex) */
+.mode-signup .signup-only.field-block { display: flex; }
+.mode-signup .signup-only.btn { display: inline-flex; }
+/* Recovery-only: the new-password fields (flex) and its button (inline-flex) */
+.mode-recovery .recovery-only.field-block { display: flex; }
+.mode-recovery .recovery-only.btn { display: inline-flex; }
 
-.auth-google { display: flex; align-items: center; justify-content: center; gap: 8px; }
-.g-mark { font-weight: 800; color: #4285F4; }
+.auth-link {
+  background: none; border: none; padding: 2px 0; align-self: flex-start;
+  color: var(--t-easy); font-family: var(--font); font-size: 13px;
+  font-weight: 600; cursor: pointer;
+}
+.auth-link:hover { text-decoration: underline; }
 
 .auth-msg { min-height: 18px; margin: 0; font-size: 13px; color: var(--text-dim); }
 .auth-msg.error { color: #d23b3b; }

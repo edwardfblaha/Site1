@@ -537,36 +537,89 @@
     const email = () => $("authEmail").value.trim();
     const password = () => $("authPassword").value;
 
-    // Require both fields up front. Calling Supabase with an empty email or
-    // password is interpreted as an anonymous sign-in, which surfaces the
-    // confusing "Anonymous sign-ins are disabled" error.
-    function haveCredentials() {
-      if (!email() || !password()) {
-        setAuthMsg("Enter your email and password.", true);
-        return false;
-      }
-      return true;
+    // Switch the card between "login", "signup" and "recovery" modes.
+    function setMode(mode) {
+      const card = $("authCard");
+      card.classList.remove("mode-login", "mode-signup", "mode-recovery");
+      card.classList.add("mode-" + mode);
+      setAuthMsg("");
     }
+
     async function login() {
       setAuthMsg("");
-      if (!haveCredentials()) return;
+      // Require both fields up front. Calling Supabase with an empty email or
+      // password is treated as an anonymous sign-in, which surfaces the
+      // confusing "Anonymous sign-ins are disabled" error.
+      if (!email() || !password()) {
+        setAuthMsg("Enter your email and password.", true);
+        return;
+      }
       const { error } = await sb.auth.signInWithPassword({ email: email(), password: password() });
       if (error) setAuthMsg(error.message, true);
     }
-    async function signup() {
+
+    // Sign up requires an email and the password typed twice to confirm.
+    async function createAccount() {
       setAuthMsg("");
-      if (!haveCredentials()) return;
-      const { data, error } = await sb.auth.signUp({ email: email(), password: password() });
+      const pw = password();
+      const pw2 = $("authPassword2").value;
+      if (!email()) { setAuthMsg("Enter your email.", true); return; }
+      if (!pw || !pw2) { setAuthMsg("Enter your password twice to confirm.", true); return; }
+      if (pw.length < 6) { setAuthMsg("Password must be at least 6 characters.", true); return; }
+      if (pw !== pw2) { setAuthMsg("Passwords do not match.", true); return; }
+      const { data, error } = await sb.auth.signUp({ email: email(), password: pw });
       if (error) { setAuthMsg(error.message, true); return; }
       // If the project requires email confirmation there's no session yet.
       if (!data.session) setAuthMsg("Account created — check your email to confirm, then log in.");
     }
+
+    // Email a password-reset link. The link returns here and fires a
+    // PASSWORD_RECOVERY event, which switches the card to recovery mode.
+    async function forgotPassword() {
+      setAuthMsg("");
+      if (!email()) { setAuthMsg("Enter your email above, then tap reset.", true); return; }
+      const { error } = await sb.auth.resetPasswordForEmail(email(), {
+        redirectTo: window.location.href,
+      });
+      if (error) { setAuthMsg(error.message, true); return; }
+      setAuthMsg("Password reset email sent — check your inbox.");
+    }
+
+    // Set a new password after following the reset email.
+    async function updatePassword() {
+      setAuthMsg("");
+      const pw = $("newPassword").value;
+      const pw2 = $("newPassword2").value;
+      if (!pw || !pw2) { setAuthMsg("Enter your new password twice.", true); return; }
+      if (pw.length < 6) { setAuthMsg("Password must be at least 6 characters.", true); return; }
+      if (pw !== pw2) { setAuthMsg("Passwords do not match.", true); return; }
+      const { error } = await sb.auth.updateUser({ password: pw });
+      if (error) { setAuthMsg(error.message, true); return; }
+      setMode("login");
+      setAuthMsg("Password updated — you're signed in.");
+    }
+
     $("loginBtn").addEventListener("click", login);
-    $("signupBtn").addEventListener("click", signup);
+    $("signupToggleBtn").addEventListener("click", () => setMode("signup"));
+    $("createBtn").addEventListener("click", createAccount);
+    $("backBtn").addEventListener("click", () => setMode("login"));
+    $("forgotBtn").addEventListener("click", forgotPassword);
+    $("updatePwBtn").addEventListener("click", updatePassword);
     $("logoutBtn").addEventListener("click", () => sb.auth.signOut());
     $("authPassword").addEventListener("keydown", (e) => { if (e.key === "Enter") login(); });
+    $("authPassword2").addEventListener("keydown", (e) => { if (e.key === "Enter") createAccount(); });
+    $("newPassword2").addEventListener("keydown", (e) => { if (e.key === "Enter") updatePassword(); });
 
-    sb.auth.onAuthStateChange((_event, session) => handleSession(session));
+    sb.auth.onAuthStateChange((event, session) => {
+      // Arriving via a reset link: let the user set a new password instead of
+      // dropping them straight into the app.
+      if (event === "PASSWORD_RECOVERY") {
+        setMode("recovery");
+        setAuthMsg("Choose a new password.");
+        return;
+      }
+      handleSession(session);
+    });
     sb.auth.getSession().then(({ data }) => handleSession(data.session));
   }
 

@@ -8,31 +8,51 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=9" />
+  <link rel="stylesheet" href="styles.css?v=10" />
 </head>
 <body>
   <!-- Login / signup gate — shown until the user is authenticated -->
   <div id="authScreen" class="auth-screen">
-    <div class="auth-card">
+    <div class="auth-card mode-login" id="authCard">
       <div class="auth-brand">
         <span class="brand-mark" aria-hidden="true"></span>
         <h1 class="brand-name">base</h1>
       </div>
       <p class="auth-sub">training plans for elite runners</p>
 
-      <label class="field field-block">
+      <!-- Email + password — used by login and signup -->
+      <label class="field field-block account-only">
         <span class="field-label">Email</span>
         <input type="email" id="authEmail" placeholder="you@example.com" autocomplete="email" />
       </label>
-      <label class="field field-block">
+      <label class="field field-block account-only">
         <span class="field-label">Password</span>
         <input type="password" id="authPassword" placeholder="••••••••" autocomplete="current-password" />
       </label>
+      <label class="field field-block signup-only">
+        <span class="field-label">Confirm password</span>
+        <input type="password" id="authPassword2" placeholder="••••••••" autocomplete="new-password" />
+      </label>
+
+      <!-- New password — used by the reset/recovery flow -->
+      <label class="field field-block recovery-only">
+        <span class="field-label">New password</span>
+        <input type="password" id="newPassword" placeholder="••••••••" autocomplete="new-password" />
+      </label>
+      <label class="field field-block recovery-only">
+        <span class="field-label">Confirm new password</span>
+        <input type="password" id="newPassword2" placeholder="••••••••" autocomplete="new-password" />
+      </label>
 
       <div class="auth-actions">
-        <button class="btn btn-primary" id="loginBtn">Log in</button>
-        <button class="btn btn-ghost" id="signupBtn">Sign up</button>
+        <button class="btn btn-primary login-only" id="loginBtn">Log in</button>
+        <button class="btn btn-ghost login-only" id="signupToggleBtn">Sign up</button>
+        <button class="btn btn-primary signup-only" id="createBtn">Create account</button>
+        <button class="btn btn-ghost signup-only" id="backBtn">Back to log in</button>
+        <button class="btn btn-primary recovery-only" id="updatePwBtn">Update password</button>
       </div>
+
+      <button class="auth-link login-only" id="forgotBtn">Forgot password?</button>
 
       <p class="auth-msg" id="authMsg" role="status" aria-live="polite"></p>
     </div>
@@ -172,7 +192,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=9"></script>
-  <script src="app.js?v=9"></script>
+  <script src="config.js?v=10"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>
