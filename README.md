@@ -95,7 +95,15 @@ create policy "plans_update_own"
   on public.plans for update
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- Grant the signed-in role base access to the table. RLS (above) still
+-- restricts WHICH rows each user can touch; without this grant every query
+-- is rejected with "42501: permission denied for table plans".
+grant select, insert, update, delete on table public.plans to authenticated;
 ```
+
+> Already created the table earlier and seeing `42501: permission denied`? Just run
+> the `grant …` line on its own — the rest will report "already exists", which is safe.
 
 > **Note on the schema:** the plan is saved as a single `jsonb` column rather than
 > separate `week_index / day_index / miles / type / notes / pace` columns. That is
