@@ -183,6 +183,15 @@
   const $ = (id) => document.getElementById(id);
   const unitLabel = () => (plan.units === "km" ? "km" : "mi");
 
+  // Mileage is always stored canonically in miles; convert only at the
+  // display/input boundaries so switching units re-expresses the same
+  // distance instead of relabelling the raw number.
+  const KM_PER_MI = 1.609344;
+  const toDisplay = (mi) => (plan.units === "km" ? (mi || 0) * KM_PER_MI : (mi || 0));
+  const fromDisplay = (v) => (plan.units === "km" ? (v || 0) / KM_PER_MI : (v || 0));
+  // Stored miles → rounded string in the current unit.
+  const fmtMi = (mi) => round(toDisplay(mi));
+
   function renderLegend() {
     const el = $("legend");
     el.innerHTML = "";
@@ -227,7 +236,7 @@
       head.innerHTML = `
         <span class="week-num">Week ${w + 1}</span>
         <span class="week-range">${fmtRange(weekStart, weekEnd)}</span>
-        <span class="week-total">${round(weekTotals[w])}<small> ${unitLabel()}</small></span>
+        <span class="week-total">${fmtMi(weekTotals[w])}<small> ${unitLabel()}</small></span>
         <div class="week-bar"><div class="week-bar-fill" style="width:${(weekTotals[w] / peak) * 100}%"></div></div>`;
       week.appendChild(head);
 
@@ -269,7 +278,7 @@
     const session = (badge, mi, t) =>
       `<div class="session"><span class="session-badge">${badge}</span>` +
       `<span class="session-dot" style="background:${t ? t.color : "var(--t-rest)"}"></span>` +
-      `<span class="session-mi">${round(mi)} ${unitLabel()}</span>` +
+      `<span class="session-mi">${fmtMi(mi)} ${unitLabel()}</span>` +
       (t ? `<span class="session-name">${t.id === "race" ? "🏁 " : ""}${t.label}</span>` : "") +
       `</div>`;
 
@@ -298,7 +307,7 @@
         <span class="day-name">${DAY_NAMES[dayIdx]}</span>
         <span class="day-date">${date.getMonth() + 1}/${date.getDate()}</span>
       </div>
-      <span class="day-mileage${mileageClass}">${round(total)}<small> ${unitLabel()}</small></span>
+      <span class="day-mileage${mileageClass}">${fmtMi(total)}<small> ${unitLabel()}</small></span>
       ${body}
       ${noteHtml}
       ${mods ? `<div class="day-mods">${mods}</div>` : ""}`;
@@ -355,9 +364,9 @@
     }
 
     const u = unitLabel();
-    $("sumTotal").textContent = round(total);
-    $("sumAvg").textContent = round(total / Math.max(1, plan.weeks));
-    $("sumPeak").textContent = round(peak);
+    $("sumTotal").textContent = fmtMi(total);
+    $("sumAvg").textContent = fmtMi(total / Math.max(1, plan.weeks));
+    $("sumPeak").textContent = fmtMi(peak);
     $("sumWorkouts").textContent = workouts;
     $("sumTotalLabel").textContent = `total ${u}`;
     $("sumAvgLabel").textContent = `avg ${u} / week`;
@@ -518,10 +527,13 @@
     editingKey = key;
     const d = getDay(key);
     $("modalTitle").textContent = `${DAY_NAMES[dayIdx]} · ${date.toLocaleDateString(undefined, { month: "long", day: "numeric" })}`;
-    $("dMileage").value = d.mileage || "";
+    document.querySelectorAll(".distance-label").forEach((el) => {
+      el.textContent = plan.units === "km" ? "Distance (km)" : "Distance (mi)";
+    });
+    $("dMileage").value = d.mileage ? round(toDisplay(d.mileage)) : "";
     setSelectedType("typeGrid", d.type || "");
     $("dNote").value = d.note || "";
-    $("dPmMileage").value = d.pmMileage || "";
+    $("dPmMileage").value = d.pmMileage ? round(toDisplay(d.pmMileage)) : "";
     setSelectedType("typePmGrid", d.pmType || "");
     $("dPmNote").value = d.pmNote || "";
     $("dStrides").checked = !!d.strides;
@@ -537,11 +549,12 @@
 
   function saveEditor() {
     if (!editingKey) return;
-    const pmMileage = Math.max(0, parseFloat($("dPmMileage").value) || 0);
+    // Inputs are in the current display unit; store canonically in miles.
+    const pmMileage = fromDisplay(Math.max(0, parseFloat($("dPmMileage").value) || 0));
     const pmType = selectedType("typePmGrid");
     const pmNote = $("dPmNote").value.trim();
     const entry = {
-      mileage: Math.max(0, parseFloat($("dMileage").value) || 0),
+      mileage: fromDisplay(Math.max(0, parseFloat($("dMileage").value) || 0)),
       type: selectedType("typeGrid"),
       note: $("dNote").value.trim(),
       pmMileage,
