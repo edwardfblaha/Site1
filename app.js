@@ -538,8 +538,17 @@
     $("dPmNote").value = d.pmNote || "";
     $("dStrides").checked = !!d.strides;
     $("dHills").checked = !!d.hills;
+    autoGrow($("dNote"));
+    autoGrow($("dPmNote"));
     $("modalBackdrop").classList.add("open");
     $("dMileage").focus();
+  }
+
+  // Expand a textarea to fit its content so long notes are fully visible.
+  function autoGrow(el) {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 320) + "px";
   }
 
   function closeEditor() {
@@ -654,6 +663,8 @@
 
     $("dSave").addEventListener("click", saveEditor);
     $("dClear").addEventListener("click", clearEditingDay);
+    $("dNote").addEventListener("input", (e) => autoGrow(e.target));
+    $("dPmNote").addEventListener("input", (e) => autoGrow(e.target));
     $("modalClose").addEventListener("click", closeEditor);
     $("modalBackdrop").addEventListener("click", (e) => {
       if (e.target === $("modalBackdrop")) closeEditor();
