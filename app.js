@@ -233,11 +233,36 @@
 
       const head = document.createElement("div");
       head.className = "week-head";
+      head.draggable = true;
+      head.dataset.week = w;
+      head.title = "Drag onto another week to copy all 7 days";
       head.innerHTML = `
         <span class="week-num">Week ${w + 1}</span>
         <span class="week-range">${fmtRange(weekStart, weekEnd)}</span>
         <span class="week-total">${fmtMi(weekTotals[w])}<small> ${unitLabel()}</small></span>
         <div class="week-bar"><div class="week-bar-fill" style="width:${(weekTotals[w] / peak) * 100}%"></div></div>`;
+
+      // Drag a week onto another week to copy its 7 days there.
+      head.addEventListener("dragstart", (e) => {
+        e.stopPropagation();
+        e.dataTransfer.setData("application/x-base-week", String(w));
+        e.dataTransfer.effectAllowed = "copy";
+        head.classList.add("is-dragging");
+      });
+      head.addEventListener("dragend", () => head.classList.remove("is-dragging"));
+      head.addEventListener("dragover", (e) => {
+        if (e.dataTransfer.types.includes("application/x-base-week")) {
+          e.preventDefault();
+          head.classList.add("is-drop");
+        }
+      });
+      head.addEventListener("dragleave", () => head.classList.remove("is-drop"));
+      head.addEventListener("drop", (e) => {
+        e.preventDefault();
+        head.classList.remove("is-drop");
+        const src = parseInt(e.dataTransfer.getData("application/x-base-week"), 10);
+        if (!Number.isNaN(src)) copyWeek(src, w);
+      });
       week.appendChild(head);
 
       for (let i = 0; i < 7; i++) {
@@ -483,6 +508,22 @@
     renderSummary();
     applySelectionClasses();
     setSaveStatus(entries.length > 1 ? `Moved ${entries.length} days` : "Copied day", true);
+  }
+
+  // Copy all 7 days of one week onto another week (dragging a week onto a week).
+  function copyWeek(srcWeek, destWeek) {
+    if (srcWeek === destWeek) return;
+    const start = mondayOf(parseISO(plan.startDate));
+    for (let i = 0; i < 7; i++) {
+      const srcKey = isoOf(addDays(start, srcWeek * 7 + i));
+      const destKey = isoOf(addDays(start, destWeek * 7 + i));
+      setEntry(destKey, getDay(srcKey));
+    }
+    savePlan();
+    renderCalendar();
+    renderSummary();
+    applySelectionClasses();
+    setSaveStatus(`Copied week ${srcWeek + 1} → week ${destWeek + 1}`, true);
   }
 
   // ---- Day editor modal ----
