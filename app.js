@@ -475,6 +475,7 @@
     const keys = allDayKeys();
     const targets = keys.filter((k) => selection.has(k));
     if (!targets.length) { setSaveStatus("Select day(s) to paste onto", true); return; }
+    pushUndo();
     if (clipboard.length === 1) {
       // One copied day fills every selected target.
       targets.forEach((k) => setEntry(k, clipboard[0]));
@@ -499,6 +500,7 @@
     const entries = ordered.map((k) => cloneEntry(getDay(k)));
     const startIdx = keys.indexOf(targetKey);
     if (startIdx === -1) return;
+    pushUndo();
     entries.forEach((entry, i) => {
       const tk = keys[startIdx + i];
       if (tk) setEntry(tk, entry);
@@ -514,6 +516,16 @@
   function copyWeek(srcWeek, destWeek) {
     if (srcWeek === destWeek) return;
     const start = mondayOf(parseISO(plan.startDate));
+    // Warn before clobbering a destination week that already has training data.
+    let destHasData = false;
+    for (let i = 0; i < 7; i++) {
+      if (dayHasContent(getDay(isoOf(addDays(start, destWeek * 7 + i))))) { destHasData = true; break; }
+    }
+    if (destHasData &&
+        !confirm(`Week ${destWeek + 1} already has training data. Overwrite all 7 days with week ${srcWeek + 1}? You can undo this with ⌘/Ctrl+Z.`)) {
+      return;
+    }
+    pushUndo();
     for (let i = 0; i < 7; i++) {
       const srcKey = isoOf(addDays(start, srcWeek * 7 + i));
       const destKey = isoOf(addDays(start, destWeek * 7 + i));
@@ -524,6 +536,22 @@
     renderSummary();
     applySelectionClasses();
     setSaveStatus(`Copied week ${srcWeek + 1} → week ${destWeek + 1}`, true);
+  }
+
+  // ---- Undo ----
+  // Snapshot the plan before each mutation so ⌘/Ctrl+Z can revert it.
+  const undoStack = [];
+  const MAX_UNDO = 50;
+  function pushUndo() {
+    undoStack.push(JSON.parse(JSON.stringify(plan)));
+    if (undoStack.length > MAX_UNDO) undoStack.shift();
+  }
+  function undo() {
+    if (!undoStack.length) { setSaveStatus("Nothing to undo", true); return; }
+    plan = undoStack.pop();
+    savePlan();
+    renderAll();
+    setSaveStatus("Undone", true);
   }
 
   // ---- Day editor modal ----
@@ -614,6 +642,7 @@
       strides: $("dStrides").checked,
       hills: $("dHills").checked,
     };
+    pushUndo();
     if (dayHasContent(entry)) plan.days[editingKey] = entry;
     else delete plan.days[editingKey];
     savePlan();
@@ -623,6 +652,7 @@
   }
 
   function clearEditingDay() {
+    pushUndo();
     if (editingKey) delete plan.days[editingKey];
     savePlan();
     closeEditor();
@@ -695,7 +725,8 @@
       e.target.value = "";
     });
     $("resetBtn").addEventListener("click", () => {
-      if (confirm("Clear the entire plan? This cannot be undone.")) {
+      if (confirm("Clear the entire plan? You can undo this with ⌘/Ctrl+Z.")) {
+        pushUndo();
         plan = defaultPlan();
         savePlan();
         renderAll();
@@ -717,11 +748,14 @@
         if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) saveEditor();
         return;
       }
-      // Don't hijack copy/paste while typing in a field.
+      // Don't hijack shortcuts while typing in a field.
       const tag = (e.target.tagName || "").toLowerCase();
       if (tag === "input" || tag === "textarea" || tag === "select") return;
 
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "c") {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        undo();
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "c") {
         if (selection.size) { e.preventDefault(); copySelection(); }
       } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "v") {
         if (clipboard) { e.preventDefault(); pasteSelection(); }
