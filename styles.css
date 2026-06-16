@@ -232,6 +232,8 @@ tr.scoring .rk { color: var(--accent); }
 .prose p { color: var(--text-dim); line-height: 1.6; margin: 0 0 6px; font-size: 15px; }
 .prose strong { color: var(--text); }
 .prose table { margin: 14px 0 8px; }
+.prose .eq { background: var(--bg-2); border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 14px; font-size: 15px; color: var(--text); display: inline-block; margin: 6px 0; }
 
 .empty { text-align: center; padding: 60px 0; }
 .empty h2 { margin: 0 0 8px; }

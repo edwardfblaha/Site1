@@ -24,7 +24,18 @@
     return 1 + (order / Math.max(1, maxOrder)) * 1.2; // 1.0 → 2.2 across season
   }
 
-  function buildGender(gender) {
+  // Optional manual importance nudge on top of computed field strength.
+  function tierMultiplier(tier) {
+    switch (tier) {
+      case "national": return 1.25;
+      case "regional": return 1.12;
+      case "conference": return 1.05;
+      default: return 1;
+    }
+  }
+
+  function buildGender(gender, fieldStrengthByRace) {
+    fieldStrengthByRace = fieldStrengthByRace || {};
     const athletes = D.ATHLETES.filter((a) => a.gender === gender);
     const idx = Object.fromEntries(athletes.map((a, i) => [a.id, i]));
     const n = athletes.length;
@@ -47,16 +58,22 @@
       const rows = D.RESULTS.filter((x) => x.raceId === race.id)
         .filter((x) => idx[x.athleteId] !== undefined)
         .sort((p, q) => p.seconds - q.seconds);
-      const w = recencyWeight(race.order, maxOrder);
+      // Race weight = recency × field strength (quality of who showed up) ×
+      // an optional manual tier multiplier. Beating a strong field counts more.
+      const fs = fieldStrengthByRace[race.id] != null ? fieldStrengthByRace[race.id] : 1;
+      const w = recencyWeight(race.order, maxOrder) * fs * tierMultiplier(race.tier);
 
       for (let p = 0; p < rows.length; p++) {
         for (let q = p + 1; q < rows.length; q++) {
           const winner = rows[p], loser = rows[q];
           const wi = idx[winner.athleteId], li = idx[loser.athleteId];
-          // Margin signal: closer finishes are weaker evidence than blowouts,
-          // but cap so a huge gap doesn't dominate. Normalize by race distance.
+          // A win is mostly a win: every head-to-head result carries a strong
+          // baseline, with margin only a modest bonus. This is deliberate for
+          // distance racing — a one-second win over the #1 contender is at
+          // least as meaningful as a 30s win over the back of the field, so we
+          // must NOT let big late-race gaps outweigh tight elite finishes.
           const gap = (loser.seconds - winner.seconds) / winner.seconds; // fractional
-          const margin = Math.max(0.15, Math.min(1, gap * 18 + 0.15));
+          const margin = Math.max(0.8, Math.min(1.2, 0.85 + gap * 10));
           const wgt = w * margin;
 
           W[wi] += w; L[li] += w;
@@ -84,10 +101,15 @@
 
     const rating = solve(M, b, n);
 
-    // Map raw ratings → 0–100. Center on field, scale by spread.
-    const mean = rating.reduce((s, x) => s + x, 0) / Math.max(1, n);
-    const sd = Math.sqrt(rating.reduce((s, x) => s + (x - mean) ** 2, 0) / Math.max(1, n)) || 1;
-    const scoreOf = (r) => Math.max(1, Math.min(100, 72 + ((r - mean) / sd) * 13));
+    // Map raw ratings → 0–100 using robust anchors so the elite end stays
+    // well-separated even when a long tail of slower athletes widens the field.
+    // Anchor the top rating near 99 and the 5th percentile near 40, scaling
+    // linearly between — this keeps #1 vs #5 visibly distinct.
+    const sorted = [...rating].filter((x) => Number.isFinite(x)).sort((a, b) => a - b);
+    const q = (p) => sorted.length ? sorted[Math.min(sorted.length - 1, Math.max(0, Math.round(p * (sorted.length - 1))))] : 0;
+    const hi = q(0.999), lo = q(0.05);
+    const span = (hi - lo) || 1;
+    const scoreOf = (r) => Math.max(1, Math.min(100, 40 + ((r - lo) / span) * 59));
 
     // Assemble per-athlete records.
     const recs = athletes.map((a) => {
@@ -100,20 +122,52 @@
         wins: Math.round(wins), losses: Math.round(losses),
         winPct: wins + losses > 0 ? wins / (wins + losses) : 0,
         raceCount: myRaces,
+        active: a.active !== false,
         _idx: idx[a.id],
       };
     });
 
-    // National rank within gender by rating.
-    recs.sort((x, y) => y.raw - x.raw);
-    recs.forEach((r, i) => {
+    // National rank within gender by rating — only active athletes are ranked;
+    // inactive (not returning) athletes keep a rating but are listed separately.
+    const ranked = recs.filter((r) => r.active).sort((x, y) => y.raw - x.raw);
+    ranked.forEach((r, i) => {
       r.rank = i + 1;
-      r.percentile = 100 * (1 - i / Math.max(1, recs.length - 1));
-      r.fieldSize = recs.length;
+      r.percentile = 100 * (1 - i / Math.max(1, ranked.length - 1));
+      r.fieldSize = ranked.length;
     });
+    recs.filter((r) => !r.active).forEach((r) => { r.rank = null; r.fieldSize = ranked.length; });
+    recs.sort((x, y) => y.raw - x.raw);
 
-    return { athletes, recs, recById: Object.fromEntries(recs.map((r) => [r.athlete.id, r])),
+    return { athletes, recs, ranked,
+      recById: Object.fromEntries(recs.map((r) => [r.athlete.id, r])),
       beat, meetings, scoreOf, maxOrder };
+  }
+
+  // Field strength of each race = how strong its competitors are, from a prior
+  // set of athlete scores. Normalized so an average field ≈ 1.0; elite fields
+  // weigh more. Returns { raceId: strength }.
+  function computeFieldStrength(recById) {
+    const byRace = {};
+    D.RACES.forEach((race) => {
+      const rows = D.RESULTS.filter((x) => x.raceId === race.id);
+      if (!rows.length) { byRace[race.id] = 1; return; }
+      // Reward both depth and top-end quality: blend mean and top-5 mean score.
+      const scores = rows.map((x) => (recById[x.athleteId] ? recById[x.athleteId].score : 50))
+        .sort((a, b) => b - a);
+      const mean = scores.reduce((s, v) => s + v, 0) / scores.length;
+      const topK = scores.slice(0, 5);
+      const topMean = topK.reduce((s, v) => s + v, 0) / topK.length;
+      byRace[race.id] = 0.5 * mean + 0.5 * topMean; // ~0..100 scale for now
+    });
+    // Normalize so the average race = 1.0, then compress so weights stay sane.
+    const vals = Object.values(byRace);
+    const avg = vals.reduce((s, v) => s + v, 0) / Math.max(1, vals.length);
+    Object.keys(byRace).forEach((id) => {
+      const ratio = byRace[id] / (avg || 1);
+      // Compress around 1 so a very strong field is ~1.6x, a weak one ~0.6x.
+      byRace[id] = Math.max(0.5, Math.min(1.8, 1 + (ratio - 1) * 1.4));
+    });
+    return byRace;
   }
 
   // Solve M x = b via Gaussian elimination with partial pivoting.
@@ -144,8 +198,23 @@
   }
 
   function build() {
-    const M = buildGender("M");
-    const F = buildGender("F");
+    // Iterate: rate athletes with current field weights, recompute each race's
+    // field strength from those ratings, then re-rate. Converges quickly and
+    // makes "who you beat" matter more when the field was strong.
+    let fsM = {}, fsF = {};
+    let M = buildGender("M", fsM);
+    let F = buildGender("F", fsF);
+    for (let pass = 0; pass < 4; pass++) {
+      const recById0 = { ...M.recById, ...F.recById };
+      const fs = computeFieldStrength(recById0);
+      fsM = fs; fsF = fs;
+      M = buildGender("M", fsM);
+      F = buildGender("F", fsF);
+    }
+    // Stash final field strength on each race for display.
+    const finalFS = computeFieldStrength({ ...M.recById, ...F.recById });
+    D.RACES.forEach((r) => (r.fieldStrength = finalFS[r.id] != null ? finalFS[r.id] : 1));
+
     const byGender = { M, F };
     const recById = { ...M.recById, ...F.recById };
     const allRecs = [...M.recs, ...F.recs];
@@ -187,7 +256,7 @@
     ["M", "F"].forEach((g) => {
       D.TEAMS.forEach((t) => {
         const roster = byGender[g].recs
-          .filter((r) => r.team.id === t.id)
+          .filter((r) => r.team.id === t.id && r.active)
           .sort((a, b) => b.raw - a.raw);
         if (roster.length < 5) return;
         const top5 = roster.slice(0, 5);

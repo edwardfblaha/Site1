@@ -1,161 +1,126 @@
-/* Harrier — seed dataset (illustrative demo data, NOT official results)
+/* Harrier — data builder
  *
- * Shape mirrors what a TFRRS ingest would produce: athletes, teams, and
- * races (cross country 8k/6k AND track 5000m/10000m), each race with a list
- * of finishers and times. The ranking engine derives everything from the
- * head-to-head finishing order in these races.
+ * Turns the human-entered meet blocks in results-data.js into the normalized
+ * shape the engine consumes (COURSES / TEAMS / ATHLETES / RACES / RESULTS).
  *
- * Real data path: a TFRRS importer (see README) populates these same arrays
- * from tfrrs.org meet result pages. The demo set is generated deterministically
- * so every page is explorable today.
+ * Responsibilities:
+ *   - parse "Name|YEAR|Team|Time" rows; drop DNF/DNS/DQ from ranking but the
+ *     athlete still exists.
+ *   - match athletes across events & meets by normalized name so a runner who
+ *     races the 5k and 10k (and at multiple meets) becomes ONE athlete with a
+ *     connected head-to-head record.
+ *   - mark athletes inactive (not returning) from window.INACTIVE and rosters.
+ *   - attach a per-race field-strength weight input (the engine finalizes it).
  */
 (function () {
   "use strict";
 
-  function mulberry32(seed) {
-    return function () {
-      seed |= 0; seed = (seed + 0x6d2b79f5) | 0;
-      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
+  const slug = (s) => s.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  const normName = (s) => s.toLowerCase().normalize("NFKD").replace(/[^a-z ]/g, "").replace(/\s+/g, " ").trim();
+  const ABBR = {}; // team abbreviations are derived if not provided
+
+  function timeToSeconds(t) {
+    t = String(t).trim();
+    if (/^(dnf|dns|dq|nt|scr)$/i.test(t)) return null;
+    const m = t.match(/^(?:(\d+):)?(\d+(?:\.\d+)?)$/);
+    if (!m) return null;
+    return (m[1] ? parseInt(m[1], 10) : 0) * 60 + parseFloat(m[2]);
   }
-  const rand = mulberry32(20260616);
-  const gauss = (mean, sd) => {
-    const u = Math.max(1e-9, rand()), v = rand();
-    return mean + sd * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
-  };
-  const pick = (arr) => arr[Math.floor(rand() * arr.length)];
-  const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-
-  // Course difficulty only shapes the demo *times*; the engine never sees it —
-  // rankings come purely from finishing order (head-to-head).
-  const COURSES = {
-    nuttycombe: { name: "Nuttycombe Invitational", place: "Madison, WI", factor: 0.992 },
-    "joe-piane": { name: "Joe Piane Invitational", place: "Notre Dame, IN", factor: 1.004 },
-    "pre-nats": { name: "Pre-Nationals", place: "Stillwater, OK", factor: 1.021 },
-    "conf-champs": { name: "Conference Championships", place: "various", factor: 1.028 },
-    panorama: { name: "NCAA Regionals — Panorama Farms", place: "Charlottesville, VA", factor: 1.012 },
-    nationals: { name: "NCAA Championships", place: "Madison, WI", factor: 1.000 },
-    "track-armory": { name: "Boston University Last Chance", place: "Boston, MA", factor: 1.0 },
-    "track-payton": { name: "Payton Jordan Invitational", place: "Stanford, CA", factor: 1.0 },
-  };
-
-  const TEAM_DEFS = [
-    ["Northern Arizona", "NAU", "Big Sky", 1.00],
-    ["Oklahoma State", "OSU", "Big 12", 0.99],
-    ["BYU", "BYU", "Big 12", 0.99],
-    ["Stanford", "STAN", "ACC", 0.985],
-    ["Syracuse", "CUSE", "ACC", 0.97],
-    ["Notre Dame", "ND", "ACC", 0.985],
-    ["Oregon", "ORE", "Big Ten", 0.99],
-    ["Wisconsin", "WIS", "Big Ten", 0.98],
-    ["Washington", "UW", "Big Ten", 0.985],
-    ["Colorado", "CU", "Big 12", 0.985],
-    ["NC State", "NCST", "ACC", 0.98],
-    ["Iowa State", "ISU", "Big 12", 0.98],
-  ];
-
-  const FIRST_M = ["Liam","Noah","Ethan","Caleb","Owen","Aiden","Gabriel","Isaac","Mason","Logan","Wyatt","Elijah","Henry","Carter","Jack","Hudson","Leo","Micah","Silas","Cole","Brooks","Finn","Roman","Asher"];
-  const FIRST_F = ["Emma","Olivia","Ava","Sophia","Isabella","Mia","Amelia","Harper","Ella","Grace","Chloe","Lily","Nora","Hazel","Zoe","Aria","Maya","Ruby","Iris","Clara","June","Stella","Elena","Sadie"];
-  const LAST = ["Carlson","Whitaker","Nguyen","Okafor","Mbatha","Sorensen","Delgado","Romero","Fitzgerald","Hollis","Bennington","Beckett","Conroy","Devereux","Espinoza","Falk","Goswick","Hartley","Iversen","Jamison","Kessler","Larkin","Mercer","Novak","Ott","Pruitt","Quinto","Rasmussen","Steed","Thornbury","Underwood","Voss","Welsh","Yates","Zimmer","Baptiste","Crowell","Donovan"];
-
-  const TEAMS = [];
-  const ATHLETES = [];
-  let aid = 1;
-  const YEARS = ["FR", "SO", "JR", "SR", "5Y"];
-
-  TEAM_DEFS.forEach(([name, abbr, conf, strength]) => {
-    const team = { id: slug(name), name, abbr, conference: conf };
-    TEAMS.push(team);
-    ["M", "F"].forEach((gender) => {
-      const baseMean = gender === "M" ? 1476 : 1296; // 8k / 6k flat reference
-      const teamShift = (strength - 1.0) * 1400;
-      const n = 9 + Math.floor(rand() * 3);
-      for (let i = 0; i < n; i++) {
-        const depthPenalty = i * (gender === "M" ? 7.5 : 7.0);
-        const base = Math.max(
-          gender === "M" ? 1338 : 1158,
-          gauss(baseMean + teamShift + depthPenalty, 18)
-        );
-        const first = gender === "M" ? pick(FIRST_M) : pick(FIRST_F);
-        const fullName = `${first} ${pick(LAST)}`;
-        ATHLETES.push({
-          id: `a${aid++}`, name: fullName, slug: slug(fullName) + "-" + aid,
-          teamId: team.id, gender, year: pick(YEARS),
-          base, improve: Math.abs(gauss(gender === "M" ? 11 : 10, 5)),
-          consistency: 0.004 + rand() * 0.006,
-        });
-      }
-    });
-  });
-
-  const athleteById = Object.fromEntries(ATHLETES.map((a) => [a.id, a]));
-
-  // ---- Schedule: cross country meets + track 5k/10k races ----
-  const SCHEDULE = [
-    { courseId: "nuttycombe", date: "2025-09-26", weather: 1.004, label: "Nuttycombe Invitational", type: "XC" },
-    { courseId: "joe-piane", date: "2025-10-03", weather: 1.010, label: "Joe Piane Invitational", type: "XC" },
-    { courseId: "pre-nats", date: "2025-10-18", weather: 1.006, label: "Pre-Nationals", type: "XC" },
-    { courseId: "conf-champs", date: "2025-11-01", weather: 1.018, label: "Conference Championships", type: "XC" },
-    { courseId: "panorama", date: "2025-11-14", weather: 1.012, label: "NCAA Regionals", type: "XC" },
-    { courseId: "nationals", date: "2025-11-22", weather: 1.002, label: "NCAA Championships", type: "XC" },
-    // Track races used as additional head-to-head evidence (5k / 10k).
-    { courseId: "track-payton", date: "2025-05-02", weather: 1.0, label: "Payton Jordan Invite", type: "TRACK", trackDist: 10000 },
-    { courseId: "track-armory", date: "2025-12-06", weather: 1.0, label: "BU Last Chance", type: "TRACK", trackDist: 5000 },
-  ];
-
-  // Convert an athlete's 8k/6k flat reference to a track time (no fake-slow
-  // conversion: distance-scale with Riegel, gently tuned per gender).
-  function trackTime(a, distM, progress) {
-    const fromDist = a.gender === "M" ? 8000 : 6000;
-    const improved = a.base - a.improve * progress;
-    let t = improved * Math.pow(distM / fromDist, 1.06);
-    t *= a.gender === "M" ? 0.957 : 0.94; // honest-effort credit
-    return t;
+  function teamAbbr(name) {
+    if (ABBR[name]) return ABBR[name];
+    const words = name.replace(/[.&]/g, "").split(/\s+/);
+    const a = words.length === 1 ? name.slice(0, 4) : words.map((w) => w[0]).join("").slice(0, 4);
+    return a.toUpperCase();
   }
 
+  const MEETS = window.MEETS || [];
+  const INACTIVE = new Set((window.INACTIVE || []).map(normName));
+  const ROSTERS = window.ROSTERS || {};
+  const rosterByTeam = {};
+  Object.keys(ROSTERS).forEach((team) => { rosterByTeam[team] = new Set(ROSTERS[team].map(normName)); });
+
+  const teams = new Map();
+  const athletes = new Map();   // key: normName -> athlete object
   const RACES = [];
   const RESULTS = [];
-  let rid = 1;
-  const ordered = [...SCHEDULE].sort((a, b) => a.date.localeCompare(b.date));
+  let rid = 1, resId = 1, order = 0;
 
-  ordered.forEach((meet, mi) => {
-    const course = COURSES[meet.courseId];
-    ["M", "F"].forEach((gender) => {
-      const distanceM = meet.type === "TRACK" ? meet.trackDist : gender === "M" ? 8000 : 6000;
+  // Meets are processed oldest→newest so race "order" supports recency weighting.
+  const sortedMeets = [...MEETS].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+
+  sortedMeets.forEach((meet) => {
+    (meet.events || []).forEach((ev) => {
+      const raceId = `r${rid++}`;
+      const distanceM = ev.distanceM;
       const race = {
-        id: `r${rid++}`, meet: meet.label, type: meet.type,
-        courseId: meet.courseId, courseName: course.name, place: course.place,
-        date: meet.date, weather: meet.weather, gender, distanceM, order: mi,
+        id: raceId,
+        meet: meet.name,
+        meetId: meet.id,
+        type: ev.type || "TRACK",
+        tier: meet.tier || "",
+        courseId: slug(meet.id || meet.name),
+        courseName: meet.name,
+        place: meet.place || "",
+        date: meet.date || "",
+        gender: ev.gender,
+        distanceM,
+        order: order++,
+        // fieldStrength is filled in by the engine after ratings exist; the
+        // builder leaves a neutral default so the data is self-contained.
+        fieldStrength: 1,
       };
       RACES.push(race);
 
-      // Track 10k draws a smaller, self-selected field; XC nearly everyone.
-      const skip = meet.type === "TRACK" ? (meet.trackDist === 10000 ? 0.5 : 0.32) : 0.12;
-      const field = ATHLETES.filter((a) => a.gender === gender).filter(() => rand() > skip);
-      const progress = mi / (ordered.length - 1);
+      (ev.results || []).forEach((line) => {
+        const [name, year, team, timeStr] = String(line).split("|").map((s) => s.trim());
+        if (!name) return;
+        const key = normName(name);
+        const teamName = team || "Unattached";
+        const teamId = slug(teamName);
+        if (!teams.has(teamId)) teams.set(teamId, { id: teamId, name: teamName, abbr: teamAbbr(teamName), conference: "" });
 
-      field.forEach((a) => {
-        let raw;
-        if (meet.type === "TRACK") {
-          raw = trackTime(a, distanceM, progress) * (1 + gauss(0, a.consistency));
-        } else {
-          const improved = a.base - a.improve * progress;
-          raw = improved * course.factor * meet.weather * (1 + gauss(0, a.consistency));
+        let a = athletes.get(key);
+        if (!a) {
+          a = {
+            id: "a-" + key.replace(/ /g, "-"),
+            name, slug: slug(name),
+            teamId, gender: ev.gender, year: year || "",
+            active: true,
+          };
+          athletes.set(key, a);
+        } else if (year && !a.year) {
+          a.year = year;
         }
+
+        const seconds = timeToSeconds(timeStr);
+        // Non-finishers: keep the athlete, but no rankable result row.
+        if (seconds == null) return;
         RESULTS.push({
-          id: `res${RESULTS.length + 1}`, raceId: race.id,
-          athleteId: a.id, teamId: a.teamId, gender, seconds: Math.round(raw),
+          id: `res${resId++}`, raceId, athleteId: a.id, teamId,
+          gender: ev.gender, seconds: Math.round(seconds * 100) / 100,
         });
       });
     });
   });
 
+  // ---- Activity status (returning vs. not) ----
+  // An athlete is inactive if explicitly listed, OR if their team has an
+  // official 2026 roster and they're not on it.
+  athletes.forEach((a, key) => {
+    let active = true;
+    if (INACTIVE.has(key)) active = false;
+    const teamName = teams.get(a.teamId) ? teams.get(a.teamId).name : null;
+    if (teamName && rosterByTeam[teamName] && !rosterByTeam[teamName].has(key)) active = false;
+    a.active = active;
+  });
+
+  const ATHLETES = [...athletes.values()];
+  const TEAMS = [...teams.values()];
+
   window.DATA = {
-    COURSES,
+    COURSES: Object.fromEntries(RACES.map((r) => [r.courseId, { name: r.courseName, place: r.place, factor: 1 }])),
     TEAMS, teamById: Object.fromEntries(TEAMS.map((t) => [t.id, t])),
-    ATHLETES, athleteById,
+    ATHLETES, athleteById: Object.fromEntries(ATHLETES.map((a) => [a.id, a])),
     RACES, raceById: Object.fromEntries(RACES.map((r) => [r.id, r])),
     RESULTS,
   };

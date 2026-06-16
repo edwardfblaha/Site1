@@ -98,10 +98,10 @@
       whom — across track 5,000m / 10,000m and cross country.</p>
       <div class="hero-cta">
         <a class="btn btn-primary" href="#/rankings/M">View rankings</a>
-        <a class="btn" href="#/methodology">How the ranking works</a>
+        <a class="btn" href="#/methodology">How the rating works</a>
       </div>
-      <p class="notice">Preliminary 2026 men's rankings, built from the season's 5,000m performance
-      lists. The 10,000m and cross country races fold in as they are added.</p>
+      <p class="notice">Preliminary 2026 men's rankings, built from outdoor track 5,000m and 10,000m
+      results. Cross country races fold in as they are added.</p>
     </section>
     <div class="home-grid">
       ${leaderCard("Men · Top 5", men)}
@@ -380,46 +380,47 @@
   function viewMethodology() {
     return `
     <div class="page-head"><div><h2>Methodology</h2>
-      <p class="muted">How Harrier builds its rankings.</p></div></div>
+      <p class="muted">How a rating is computed.</p></div></div>
     <div class="prose card">
-      <h3>1 · Rankings come from head-to-head results, not converted times</h3>
-      <p>Most rankings convert every cross country race into a "5k equivalent" and sort the times.
-      Those conversions are shaky — and for men they tend to read artificially slow. Harrier throws that
-      out. Your rank is built from <strong>who you actually beat</strong>, across <strong>every race</strong>:
-      all cross country races plus track 5000m and 10000m.</p>
+      <h3>1 · Inputs</h3>
+      <p>Each race contributes its finishing order and finish times. For every pair of athletes in a
+      race, the faster finisher records a win over the slower one. Ratings are computed separately for
+      men and women.</p>
 
-      <h3>2 · Every race is a bracket of matchups</h3>
-      <p>In a race of 200 runners, the winner beats 199 people, second beats 198, and so on. We record
-      every one of those pairwise results. Beating someone by a stride and beating them by a minute both
-      count as a win, but bigger margins carry slightly more weight as evidence.</p>
+      <h3>2 · Rating model</h3>
+      <p>Every athlete is assigned a single rating <em>r</em>. For a matchup, the model expects the
+      rating difference <em>r<sub>i</sub> − r<sub>j</sub></em> to equal the observed margin between the
+      two athletes. All matchups are stacked into one weighted least-squares system and solved at once:</p>
+      <p class="mono eq">(MᵀW M + λI) r = MᵀW b</p>
+      <p><em>M</em> encodes each pairwise comparison (+1 for the winner, −1 for the loser), <em>b</em> is
+      the margin, and <em>W</em> holds the per-comparison weights below. The ridge term <em>λI</em>
+      keeps athletes with few results near the mean and guarantees a unique solution.</p>
 
-      <h3>3 · Wins are connected and transitive</h3>
-      <p>You don't have to race the #1 runner to be ranked near them. If you beat athletes who beat the
-      top names, that chain lifts you. Harrier solves a single national rating per gender (a Massey-style
-      least-squares system) so that rating gaps best explain every head-to-head result at once — the same
-      family of math behind respected team-sport ratings.</p>
+      <h3>3 · Transitivity</h3>
+      <p>Because all comparisons are solved jointly, strength propagates through the network: if A beats
+      B and B beats C, A's rating reflects a result over C even with no direct meeting.</p>
 
-      <h3>4 · Recent and championship races count more</h3>
-      <p>A September matchup matters; a November one matters more. Later-season races carry more weight,
-      so the rankings sharpen exactly when the racing does — and they update fast after each meet.</p>
+      <h3>4 · Margin weighting</h3>
+      <p>Each comparison carries a strong fixed base weight plus a small bonus for a larger time gap,
+      clipped to a narrow range. A win is close to a win regardless of margin, so a narrow result over a
+      strong opponent is not outweighed by a large gap over a weak one.</p>
 
-      <h3>5 · Track results strengthen the web</h3>
-      <p>Cross country fields don't all overlap, which can leave regions weakly connected. Track 5k/10k
-      results add thousands of extra matchups between athletes who don't always meet on the country,
-      tightening the national picture. We use them as <em>head-to-head evidence</em>, never as a time to
-      convert.</p>
+      <h3>5 · Field-strength weighting</h3>
+      <p>Each race is weighted by the quality of its field, measured from the ratings of the athletes in
+      it. This is solved iteratively: rate the athletes, score every field from those ratings, re-weight,
+      and repeat until stable. Beating a strong field counts for more than beating a weak one.</p>
 
-      <h3>6 · Teams score the way XC scores</h3>
-      <p>A team's rating is the average of its <strong>top five</strong> ranked athletes, with a depth
-      figure across seven — because the 6th and 7th runners decide championships.</p>
+      <h3>6 · Recency weighting</h3>
+      <p>More recent races receive higher weight, so the ratings track current form.</p>
 
-      <h3>Where the data comes from</h3>
-      <p>Results come from <strong>TFRRS</strong> (tfrrs.org), the official NCAA results database. The
-      current build is seeded from the <strong>2026 Division I men's 5,000m performance list</strong>:
-      for each meet we order the listed performances to recover the head-to-head finishing order.</p>
-      <p>These are <strong>preliminary men's rankings</strong>. Because they are built from one event so
-      far, an athlete's strength is judged against everyone he shared a meet with. The 10,000m and cross
-      country races fold in as they are added, tightening the national picture.</p>
+      <h3>7 · Rating scale</h3>
+      <p>Raw ratings are mapped to a 0–100 scale within each gender, anchored so the strongest athletes
+      sit near the top of the range and remain clearly separated. National rank is the order of the raw
+      ratings among active athletes.</p>
+
+      <h3>8 · Teams</h3>
+      <p>A team's rating is the mean rating of its top five athletes, with a separate figure across the
+      top seven for depth.</p>
     </div>`;
   }
 
