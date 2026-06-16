@@ -1,10 +1,13 @@
-# Harrier — TFRRS meet result URLs to import (one per line, # = comment)
+# NOTE: manual meet URLs are no longer required.
 #
-# Paste the URL of each meet's RESULTS page from tfrrs.org. Find them by
-# browsing https://www.tfrrs.org/  →  a meet  →  its results page, then copy
-# the address bar. Cross country AND track 5k/10k meets both work.
+# The importer now discovers meets automatically. Use either:
 #
-# Examples (replace with real meet URLs):
-# https://www.tfrrs.org/results/xc/00000/Nuttycombe_Invitational
-# https://www.tfrrs.org/results/xc/00000/NCAA_Division_I_Cross_Country_Championships
-# https://www.tfrrs.org/results/00000/Payton_Jordan_Invitational
+#   1) LIST MODE (recommended for 2026 DI men 5k/10k preliminary rankings):
+#      Edit CONFIG.listUrls at the top of tfrrs_import.mjs with the TFRRS
+#      DI men 5000m and 10000m 2026 performance-list URLs, then:
+#          node import/tfrrs_import.mjs
+#
+#   2) CRAWL MODE (auto-discover every meet under an index/team/conference page):
+#          node import/tfrrs_import.mjs --crawl <tfrrs-url> [<tfrrs-url> ...]
+#
+# This file is kept only as a pointer; you don't paste races here anymore.

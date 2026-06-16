@@ -90,13 +90,6 @@
     });
   });
 
-  // Clearly-synthetic referenced athlete so "look yourself up" is visible.
-  ATHLETES.push({
-    id: "a-demo", name: "Edward Blaha", slug: "edward-blaha-demo",
-    teamId: "syracuse", gender: "M", year: "JR",
-    base: 1420, improve: 16, consistency: 0.004, demo: true,
-  });
-
   const athleteById = Object.fromEntries(ATHLETES.map((a) => [a.id, a]));
 
   // ---- Schedule: cross country meets + track 5k/10k races ----

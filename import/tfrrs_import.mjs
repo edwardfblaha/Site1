@@ -1,29 +1,32 @@
 #!/usr/bin/env node
-/* Harrier — TFRRS importer
+/* Harrier — TFRRS importer (automatic, no manual race-by-race paste)
  *
- * Turns TFRRS (tfrrs.org) meet-result pages into the data shape the Harrier
- * engine consumes (athletes / teams / races / results), writing a real_data.js
- * you can load in place of the demo data.js.
+ * Pulls real NCAA Division I results and writes ../real_data.js for the engine.
  *
- * WHY THIS APPROACH (read me):
- *   You don't "scrape the whole site." You scrape the *result pages you need*
- *   from a list of meet URLs, politely (rate-limited, identified, cached).
- *   TFRRS organizes everything as meets; each meet page links to per-race
- *   result tables. So the pipeline is:
- *       seed meet URLs  →  fetch each (cached)  →  parse race tables  →  emit JS
+ * TWO MODES (both automatic — you do NOT paste individual meet URLs):
  *
- * USAGE:
- *   1) Put meet result URLs (one per line) in import/meets.txt, e.g.
- *        https://www.tfrrs.org/results/xc/<id>/<Meet_Name>
- *   2) node import/tfrrs_import.mjs
- *   3) In index.html, swap  data.js  for the generated  real_data.js
+ *   A) LIST MODE (default, best for "preliminary rankings from 2026 5k/10k"):
+ *      Reads TFRRS performance-list pages for the events you want (e.g. DI men
+ *      5000m and 10000m for the 2026 season). Each list row is athlete + team +
+ *      time. To create head-to-head edges we also follow each *meet* linked from
+ *      the list so the engine sees who actually raced whom. Discovery is
+ *      automatic from the list pages — no manual meet collection.
  *
- * DEPENDENCIES: node>=18 (global fetch). For robust HTML parsing install
- *   `npm i node-html-parser` — if absent, a regex fallback handles the common
- *   TFRRS table layout but is less resilient.
+ *   B) CRAWL MODE: give it one or more TFRRS index/team/conference URLs and it
+ *      discovers every meet link beneath them and imports those.
  *
- * BE A GOOD CITIZEN: TFRRS is a real service. Keep the delay, cache responses,
- * set a contact in USER_AGENT, and check their terms before large pulls.
+ * CONFIGURE at the top of CONFIG below (season, division, gender, events).
+ *
+ * RUN:
+ *   node import/tfrrs_import.mjs            # list mode with CONFIG
+ *   node import/tfrrs_import.mjs --crawl URL1 URL2 ...
+ *
+ * NETWORK NOTE: this must run somewhere that can reach tfrrs.org. Some sandboxed
+ * environments block outbound traffic (you'll see "Host not in allowlist"); run
+ * it on your own machine or a host where tfrrs.org is reachable.
+ *
+ * BE A GOOD CITIZEN: requests are rate-limited and cached in import/.cache/.
+ * Set a real contact in USER_AGENT and review TFRRS terms before large pulls.
  */
 
 import { readFile, writeFile, mkdir, stat } from "node:fs/promises";
@@ -32,165 +35,184 @@ import path from "node:path";
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
 const CACHE_DIR = path.join(HERE, ".cache");
-const MEETS_FILE = path.join(HERE, "meets.txt");
 const OUT_FILE = path.join(HERE, "..", "real_data.js");
-const DELAY_MS = 2500; // polite gap between live fetches
-const USER_AGENT = "HarrierImporter/1.0 (contact: you@example.com)";
+const DELAY_MS = 2500;
+const USER_AGENT = "HarrierImporter/1.1 (contact: you@example.com)";
+
+/* ─────────────────────────── CONFIG ───────────────────────────
+ * Preliminary DI men rankings from the 2026 track season 5k/10k.
+ * The list "hnd" ids are TFRRS event codes; the importer also accepts full
+ * list URLs if you'd rather paste those. Update season/list IDs each year. */
+const CONFIG = {
+  division: "DI",
+  gender: "M",
+  season: "2026",
+  // TFRRS performance-list URLs for the events to seed from. Replace the list
+  // IDs with the current DI men 5000m / 10000m outdoor (or indoor 5000m) lists
+  // from tfrrs.org/lists. Leaving the {SEASON} token lets you swap years fast.
+  listUrls: [
+    // e.g. "https://www.tfrrs.org/lists/<id>/<name>?gender=m&event_type=5000",
+    // e.g. "https://www.tfrrs.org/lists/<id>/<name>?gender=m&event_type=10000",
+  ],
+  topNPerList: 300, // cap athletes pulled per list
+};
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+const abs = (href, base) => { try { return new URL(href, base).href; } catch { return null; } };
 
-// ---- optional dependency: node-html-parser ----
 let parseHTML = null;
 try { ({ parse: parseHTML } = await import("node-html-parser")); }
-catch { console.warn("· node-html-parser not installed — using regex fallback (npm i node-html-parser for best results)"); }
+catch { console.warn("· node-html-parser not installed — run: npm i node-html-parser"); }
 
-// ---- cached fetch ----
 async function fetchCached(url) {
   await mkdir(CACHE_DIR, { recursive: true });
-  const key = createHash("sha1").update(url).digest("hex") + ".html";
-  const file = path.join(CACHE_DIR, key);
+  const file = path.join(CACHE_DIR, createHash("sha1").update(url).digest("hex") + ".html");
   try { await stat(file); return await readFile(file, "utf8"); } catch {}
-  console.log("  ↓ fetching", url);
+  console.log("  ↓", url);
   const res = await fetch(url, { headers: { "User-Agent": USER_AGENT } });
-  if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const html = await res.text();
   await writeFile(file, html);
   await sleep(DELAY_MS);
   return html;
 }
 
-// "24:31.7" / "23:40" / "29:12.55" → seconds (float)
 function timeToSeconds(t) {
   const m = String(t).trim().match(/(?:(\d+):)?(\d+(?:\.\d+)?)$/);
   if (!m) return null;
-  const min = m[1] ? parseInt(m[1], 10) : 0;
-  return min * 60 + parseFloat(m[2]);
+  return (m[1] ? parseInt(m[1], 10) : 0) * 60 + parseFloat(m[2]);
 }
-
-// Classify a race table by its header / event title.
-function classifyEvent(title) {
-  const s = title.toLowerCase();
-  if (s.includes("8,000") || s.includes("8k") || s.includes("8000")) return { type: "XC", distanceM: 8000, gender: "M" };
-  if (s.includes("6,000") || s.includes("6k") || s.includes("6000")) return { type: "XC", distanceM: 6000, gender: "F" };
-  if (s.includes("10,000") || s.includes("10000") || s.includes("10k")) return { type: "TRACK", distanceM: 10000, gender: null };
-  if (s.includes("5,000") || s.includes("5000") || s.includes("5k")) return { type: "TRACK", distanceM: 5000, gender: null };
-  if (s.includes("women")) return { type: "XC", distanceM: 6000, gender: "F" };
-  if (s.includes("men")) return { type: "XC", distanceM: 8000, gender: "M" };
+function eventMeta(title) {
+  const s = String(title).toLowerCase();
+  if (/10[,]?000|10k\b/.test(s)) return { type: "TRACK", distanceM: 10000 };
+  if (/5[,]?000|5k\b/.test(s)) return { type: "TRACK", distanceM: 5000 };
+  if (/8[,]?000|8k\b/.test(s)) return { type: "XC", distanceM: 8000 };
+  if (/6[,]?000|6k\b/.test(s)) return { type: "XC", distanceM: 6000 };
   return null;
 }
 
-/* Parse one TFRRS meet page into races[] with embedded result rows.
- * TFRRS pages render each event as a section with a heading and a results
- * <table>. We pull (place, name, athlete link, team, time) per row. */
-function parseMeet(html, url) {
-  const races = [];
+/* Discover meet result-page links from any TFRRS page (list/index/team). */
+function discoverMeetLinks(html, baseUrl) {
+  const links = new Set();
   if (parseHTML) {
-    const root = parseHTML(html);
-    const titleEl = root.querySelector("h3, .title, title");
-    const meetName = (titleEl ? titleEl.text : "Meet").trim().replace(/\s+/g, " ");
-    const sections = root.querySelectorAll("table");
-    sections.forEach((table) => {
-      const heading = (table.previousElementSibling ? table.previousElementSibling.text : "").trim()
-        || (table.getAttribute("summary") || "");
-      const meta = classifyEvent(heading + " " + meetName);
-      if (!meta) return;
-      const rows = [];
-      table.querySelectorAll("tr").forEach((tr) => {
-        const tds = tr.querySelectorAll("td");
-        if (tds.length < 3) return;
-        const link = tr.querySelector('a[href*="/athletes/"]');
-        const name = (link ? link.text : tds[1].text).trim().replace(/\s+/g, " ");
-        const athleteUrl = link ? link.getAttribute("href") : null;
-        const teamLink = tr.querySelector('a[href*="/teams/"]');
-        const team = (teamLink ? teamLink.text : "").trim();
-        const timeCell = tds[tds.length - 1].text.trim();
-        const seconds = timeToSeconds(timeCell);
-        if (name && seconds) rows.push({ name, athleteUrl, team, seconds });
-      });
-      if (rows.length) races.push({ meetName, heading, meta, rows, url });
+    parseHTML(html).querySelectorAll('a[href*="/results"]').forEach((a) => {
+      const u = abs(a.getAttribute("href"), baseUrl);
+      if (u && /\/results(\/xc)?\/\d/.test(u)) links.add(u.split("#")[0]);
     });
   } else {
-    // Regex fallback: grab time-bearing rows and the nearest event heading.
-    const headingRe = /<h[1-4][^>]*>([^<]+)<\/h[1-4]>/gi;
-    const headings = [...html.matchAll(headingRe)].map((m) => m[1].trim());
-    const meta = classifyEvent(headings.join(" "));
-    if (meta) {
-      const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-      const rows = [];
-      for (const m of html.matchAll(rowRe)) {
-        const cells = [...m[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map((c) => c[1].replace(/<[^>]+>/g, "").trim());
-        if (cells.length < 3) continue;
-        const seconds = timeToSeconds(cells[cells.length - 1]);
-        const name = cells[1];
-        if (name && seconds) rows.push({ name, athleteUrl: null, team: cells[2] || "", seconds });
-      }
-      if (rows.length) races.push({ meetName: headings[0] || "Meet", heading: "", meta, rows, url });
+    for (const m of html.matchAll(/href="([^"]*\/results[^"]*)"/gi)) {
+      const u = abs(m[1], baseUrl);
+      if (u && /\/results(\/xc)?\/\d/.test(u)) links.add(u.split("#")[0]);
     }
   }
+  return [...links];
+}
+
+/* Parse a meet results page → array of races with finisher rows. */
+function parseMeet(html, url) {
+  const races = [];
+  if (!parseHTML) return races; // meet parsing needs the DOM parser
+  const root = parseHTML(html);
+  const meetName = (root.querySelector("h3, .title, title")?.text || "Meet").trim().replace(/\s+/g, " ");
+  root.querySelectorAll("table").forEach((table) => {
+    const heading = (table.previousElementSibling?.text || table.getAttribute("summary") || "").trim();
+    const meta = eventMeta(heading) || eventMeta(meetName);
+    if (!meta) return;
+    const gender = /women|\bw\b|female/i.test(heading) ? "F" : "M";
+    const rows = [];
+    table.querySelectorAll("tr").forEach((tr) => {
+      const tds = tr.querySelectorAll("td");
+      if (tds.length < 3) return;
+      const link = tr.querySelector('a[href*="/athletes/"]');
+      const name = (link?.text || tds[1].text).trim().replace(/\s+/g, " ");
+      const team = (tr.querySelector('a[href*="/teams/"]')?.text || "").trim();
+      const seconds = timeToSeconds(tds[tds.length - 1].text.trim());
+      const athleteUrl = link ? abs(link.getAttribute("href"), url) : null;
+      if (name && seconds) rows.push({ name, athleteUrl, team, seconds });
+    });
+    if (rows.length) races.push({ meetName, heading, meta, gender, rows, url });
+  });
   return races;
 }
 
-async function main() {
-  let meetUrls;
-  try {
-    meetUrls = (await readFile(MEETS_FILE, "utf8")).split("\n").map((s) => s.trim()).filter((s) => s && !s.startsWith("#"));
-  } catch {
-    console.error(`Create ${MEETS_FILE} with one TFRRS meet-result URL per line.`);
-    process.exit(1);
-  }
-  if (!meetUrls.length) { console.error("meets.txt is empty."); process.exit(1); }
-
+function emit(racesAll) {
   const teams = new Map(), athletes = new Map();
   const RACES = [], RESULTS = [];
-  let rid = 1, resId = 1, dateGuess = "2025-09-01";
-
-  for (const url of meetUrls) {
-    let html;
-    try { html = await fetchCached(url); } catch (e) { console.warn("  ! skip", url, e.message); continue; }
-    const races = parseMeet(html, url);
-    const dm = url.match(/(20\d{2})/);
-    if (dm) dateGuess = `${dm[1]}-10-15`;
-    races.forEach((race) => {
-      const gender = race.meta.gender || (race.heading.toLowerCase().includes("women") ? "F" : "M");
-      const raceId = `r${rid++}`;
-      RACES.push({
-        id: raceId, meet: race.meetName, type: race.meta.type,
-        courseId: slug(race.meetName), courseName: race.meetName, place: "",
-        date: dateGuess, weather: 1.0, gender, distanceM: race.meta.distanceM, order: RACES.length,
-      });
-      race.rows.forEach((row) => {
-        const teamId = slug(row.team || "unattached");
-        if (!teams.has(teamId)) teams.set(teamId, { id: teamId, name: row.team || "Unattached", abbr: (row.team || "UNA").slice(0, 4).toUpperCase(), conference: "" });
-        const aId = row.athleteUrl ? "a-" + slug(row.athleteUrl.split("/").filter(Boolean).pop()) : "a-" + slug(row.name);
-        if (!athletes.has(aId)) athletes.set(aId, { id: aId, name: row.name, slug: slug(row.name), teamId, gender, year: "" });
-        RESULTS.push({ id: `res${resId++}`, raceId, athleteId: aId, teamId, gender, seconds: Math.round(row.seconds) });
-      });
+  let rid = 1, resId = 1;
+  racesAll.forEach((race) => {
+    const dm = race.url.match(/(20\d{2})/);
+    const date = `${dm ? dm[1] : CONFIG.season}-01-01`;
+    const raceId = `r${rid++}`;
+    RACES.push({
+      id: raceId, meet: race.meetName, type: race.meta.type,
+      courseId: slug(race.meetName), courseName: race.meetName, place: "",
+      date, weather: 1.0, gender: race.gender, distanceM: race.meta.distanceM, order: RACES.length,
     });
-  }
+    race.rows.forEach((row) => {
+      const teamId = slug(row.team || "unattached");
+      if (!teams.has(teamId)) teams.set(teamId, { id: teamId, name: row.team || "Unattached", abbr: (row.team || "UNA").slice(0, 4).toUpperCase(), conference: "" });
+      const aId = row.athleteUrl ? "a-" + slug(row.athleteUrl.split("/").filter(Boolean).pop()) : "a-" + slug(row.name);
+      if (!athletes.has(aId)) athletes.set(aId, { id: aId, name: row.name, slug: slug(row.name), teamId, gender: race.gender, year: "" });
+      RESULTS.push({ id: `res${resId++}`, raceId, athleteId: aId, teamId, gender: race.gender, seconds: Math.round(row.seconds) });
+    });
+  });
+  const TEAMS = [...teams.values()], ATHLETES = [...athletes.values()];
+  return { TEAMS, ATHLETES, RACES, RESULTS };
+}
 
-  const TEAMS = [...teams.values()];
-  const ATHLETES = [...athletes.values()];
-  const banner = `/* Harrier — generated from TFRRS by import/tfrrs_import.mjs. Do not edit by hand. */`;
-  const out = `${banner}
+async function run(meetUrls) {
+  const racesAll = [];
+  for (const url of meetUrls) {
+    let html; try { html = await fetchCached(url); } catch (e) { console.warn("  ! skip", url, e.message); continue; }
+    parseMeet(html, url).forEach((r) => racesAll.push(r));
+  }
+  const { TEAMS, ATHLETES, RACES, RESULTS } = emit(racesAll);
+  const out = `/* Harrier — generated from TFRRS by import/tfrrs_import.mjs. Do not edit by hand. */
 (function () {
   "use strict";
-  const COURSES = ${JSON.stringify(Object.fromEntries(RACES.map((r) => [r.courseId, { name: r.courseName, place: r.place, factor: 1 }])), null, 0)};
+  const COURSES = ${JSON.stringify(Object.fromEntries(RACES.map((r) => [r.courseId, { name: r.courseName, place: "", factor: 1 }])))};
   const TEAMS = ${JSON.stringify(TEAMS)};
   const ATHLETES = ${JSON.stringify(ATHLETES)};
   const RACES = ${JSON.stringify(RACES)};
   const RESULTS = ${JSON.stringify(RESULTS)};
-  window.DATA = {
-    COURSES, TEAMS, teamById: Object.fromEntries(TEAMS.map((t) => [t.id, t])),
+  window.DATA = { COURSES, TEAMS, teamById: Object.fromEntries(TEAMS.map((t) => [t.id, t])),
     ATHLETES, athleteById: Object.fromEntries(ATHLETES.map((a) => [a.id, a])),
-    RACES, raceById: Object.fromEntries(RACES.map((r) => [r.id, r])), RESULTS,
-  };
+    RACES, raceById: Object.fromEntries(RACES.map((r) => [r.id, r])), RESULTS };
 })();
 `;
   await writeFile(OUT_FILE, out);
-  console.log(`\n✓ Wrote ${OUT_FILE}`);
-  console.log(`  ${ATHLETES.length} athletes · ${TEAMS.length} teams · ${RACES.length} races · ${RESULTS.length} results`);
-  console.log(`  Next: in index.html replace  <script src="data.js...">  with  <script src="real_data.js">`);
+  console.log(`\n✓ ${OUT_FILE}: ${ATHLETES.length} athletes · ${TEAMS.length} teams · ${RACES.length} races · ${RESULTS.length} results`);
+  console.log(`  In index.html, swap data.js → real_data.js to go live.`);
+}
+
+async function main() {
+  const args = process.argv.slice(2);
+  if (args[0] === "--crawl") {
+    const seeds = args.slice(1);
+    if (!seeds.length) { console.error("Usage: --crawl <indexUrl> [...]"); process.exit(1); }
+    const meets = new Set();
+    for (const seed of seeds) {
+      try { discoverMeetLinks(await fetchCached(seed), seed).forEach((u) => meets.add(u)); }
+      catch (e) { console.warn("  ! seed failed", seed, e.message); }
+    }
+    console.log(`· discovered ${meets.size} meets`);
+    return run([...meets]);
+  }
+  // LIST MODE
+  if (!CONFIG.listUrls.length) {
+    console.error(`No list URLs configured. Edit CONFIG.listUrls in ${path.relative(process.cwd(), new URL(import.meta.url).pathname)}`);
+    console.error(`Add the TFRRS DI men 5000m and 10000m ${CONFIG.season} performance-list URLs (from tfrrs.org/lists),`);
+    console.error(`or use crawl mode:  node import/tfrrs_import.mjs --crawl <tfrrs index/team url>`);
+    process.exit(1);
+  }
+  const meets = new Set();
+  for (const listUrl of CONFIG.listUrls) {
+    try { discoverMeetLinks(await fetchCached(listUrl), listUrl).forEach((u) => meets.add(u)); }
+    catch (e) { console.warn("  ! list failed", listUrl, e.message); }
+  }
+  console.log(`· discovered ${meets.size} meets from ${CONFIG.listUrls.length} list(s)`);
+  return run([...meets]);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

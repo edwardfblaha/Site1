@@ -99,6 +99,8 @@ a:hover { color: #fff; }
 .lede { font-size: 17px; color: var(--text-dim); line-height: 1.5; margin: 0 0 22px; }
 .lede strong { color: #fff; }
 .hero-cta { display: flex; gap: 12px; flex-wrap: wrap; }
+.notice { margin: 18px 0 0; padding: 11px 14px; border-radius: 10px; font-size: 13px;
+  color: var(--text-dim); background: rgba(124,92,255,.1); border: 1px solid var(--line-2); }
 
 .home-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 @media (max-width: 860px) { .home-grid { grid-template-columns: 1fr; } }

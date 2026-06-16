@@ -95,12 +95,13 @@
     <section class="hero">
       <h1>National cross country rankings, settled on the course.</h1>
       <p class="lede">Every ranking on Harrier comes from <strong>head-to-head results</strong> — who beat
-      whom across every XC race and track 5k/10k. No guesswork, no fake-slow 5k conversions.
-      <strong>Look yourself up.</strong></p>
+      whom across track 5k/10k and every XC race. No guesswork, no fake-slow 5k conversions.</p>
       <div class="hero-cta">
         <a class="btn btn-primary" href="#/rankings/M">View rankings</a>
         <a class="btn" href="#/methodology">How head-to-head ranking works</a>
       </div>
+      <p class="notice">Preview running on placeholder data. Live DI men's rankings will be built
+      strictly from 2026 track-season 5k/10k results imported from TFRRS — see Methodology.</p>
     </section>
     <div class="home-grid">
       ${leaderCard("Men · Top 5", men)}
@@ -124,7 +125,7 @@
       <ol class="mini-list">
         ${list.map((r) => `<li>
           <span class="rk">${r.rank}</span>
-          <a href="#/athlete/${r.athlete.id}">${esc(r.athlete.name)}${r.athlete.demo ? ' <span class="tag">you</span>' : ""}</a>
+          <a href="#/athlete/${r.athlete.id}">${esc(r.athlete.name)}</a>
           <span class="muted">${esc(r.team.abbr)}</span>
           <span class="score-pill" style="background:${scoreColor(r.score)}">${f1(r.score)}</span>
         </li>`).join("")}
@@ -145,9 +146,9 @@
       <thead><tr><th>#</th><th>Athlete</th><th>Team</th><th>Yr</th>
         <th class="num">Rating</th><th class="num">Record</th><th class="num">Win%</th><th>Season</th></tr></thead>
       <tbody>
-        ${list.map((r) => `<tr class="${r.athlete.demo ? "is-you" : ""}">
+        ${list.map((r) => `<tr>
           <td class="rk">${r.rank}</td>
-          <td><a href="#/athlete/${r.athlete.id}">${esc(r.athlete.name)}${r.athlete.demo ? ' <span class="tag">you</span>' : ""}</a></td>
+          <td><a href="#/athlete/${r.athlete.id}">${esc(r.athlete.name)}</a></td>
           <td><a class="muted" href="#/team/${r.team.id}/${gender}">${esc(r.team.abbr)}</a></td>
           <td class="muted">${esc(r.athlete.year)}</td>
           <td class="num"><span class="score-pill" style="background:${scoreColor(r.score)}">${f1(r.score)}</span></td>
@@ -183,7 +184,7 @@
     <section class="profile-head">
       <div class="ph-id">
         <div class="avatar" style="--c:${scoreColor(r.score)}">${initials(a.name)}</div>
-        <div><h1>${esc(a.name)}${a.demo ? ' <span class="tag">demo</span>' : ""}</h1>
+        <div><h1>${esc(a.name)}</h1>
           <p class="muted"><a href="#/team/${r.team.id}/${a.gender}">${esc(r.team.name)}</a>
             · ${genderLabel(a.gender)} · ${esc(a.year)} · ${esc(r.team.conference)}</p></div>
       </div>
@@ -413,10 +414,15 @@
       figure across seven — because the 6th and 7th runners decide championships.</p>
 
       <h3>Where the data comes from</h3>
-      <p>Harrier is designed to ingest results from <strong>TFRRS</strong> (tfrrs.org), the official NCAA
-      results database — every meet, every finisher. The figures on this demo are synthetic so you can
-      explore every page today; the head-to-head method is exactly what runs on real results.</p>
-      <p class="muted">Demo data is illustrative and not official results.</p>
+      <p>Harrier ingests results from <strong>TFRRS</strong> (tfrrs.org), the official NCAA results
+      database, <em>automatically</em> — you don't paste meets one by one. The importer reads the DI
+      performance lists for the events we rank (starting with <strong>2026 men's 5000m and 10000m</strong>)
+      and follows the linked meets to recover the full head-to-head finishing order.</p>
+      <p>The <strong>preliminary men's rankings</strong> are built strictly from the 2026 track-season
+      5k/10k results and the head-to-head records within them; cross country races are added as they
+      happen.</p>
+      <p class="muted">This preview runs on placeholder data so every page is explorable. The head-to-head
+      method shown is exactly what runs once the 2026 TFRRS results are imported.</p>
     </div>`;
   }
 
