@@ -197,7 +197,7 @@
       ${stat(`<span class="score-pill big" style="background:${scoreColor(r.score)}">${f1(r.score)}</span>`, "Harrier rating")}
       ${stat(`${r.wins}–${r.losses}`, "head-to-head record")}
       ${stat(pct(r.winPct), "win rate")}
-      ${stat(`${f1(r.percentile)}%`, "national percentile")}
+      ${stat(`<span style="color:${scoreColor(r.sos)}">${f1(r.sos)}</span>`, "strength of schedule")}
       ${stat(`${r.raceCount}`, "races")}
     </div>
 
@@ -410,15 +410,22 @@
       it. This is solved iteratively: rate the athletes, score every field from those ratings, re-weight,
       and repeat until stable. Beating a strong field counts for more than beating a weak one.</p>
 
-      <h3>6 · Recency weighting</h3>
+      <h3>6 · Strength of competition</h3>
+      <p>Because all results are solved jointly, the value of a result depends on whom it was against.
+      Finishing last in a field of national contenders still places an athlete above someone who won a
+      weak race: the loser was measured against highly-rated runners, and the least-squares fit propagates
+      that. Each athlete also carries a strength-of-schedule figure — the average rating of every opponent
+      actually faced — so this is visible, not just implicit.</p>
+
+      <h3>7 · Recency weighting</h3>
       <p>More recent races receive higher weight, so the ratings track current form.</p>
 
-      <h3>7 · Rating scale</h3>
+      <h3>8 · Rating scale</h3>
       <p>Raw ratings are mapped to a 0–100 scale within each gender, anchored so the strongest athletes
       sit near the top of the range and remain clearly separated. National rank is the order of the raw
       ratings among active athletes.</p>
 
-      <h3>8 · Teams</h3>
+      <h3>9 · Teams</h3>
       <p>A team's rating is the mean rating of its top five athletes, with a separate figure across the
       top seven for depth.</p>
     </div>`;

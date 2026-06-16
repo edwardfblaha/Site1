@@ -43,10 +43,9 @@
 
     // Pairwise tallies and aggregate matchup matrix for Massey.
     const beat = {};      // beat[a][b] = weighted count a finished ahead of b
-    const meetings = {};  // meetings[a][b] = weighted total races a & b both ran
-    const W = new Float64Array(n);          // weighted wins
-    const L = new Float64Array(n);          // weighted losses
-    const games = new Float64Array(n);      // weighted games played
+    const meetings = {};  // meetings[a][b] = raw count of races a & b both ran
+    const W = new Float64Array(n);          // RAW wins (true count finished ahead)
+    const L = new Float64Array(n);          // RAW losses (true count finished behind)
     const M = [];                            // Massey normal matrix
     const b = new Float64Array(n);
     for (let i = 0; i < n; i++) M.push(new Float64Array(n));
@@ -76,14 +75,14 @@
           const margin = Math.max(0.8, Math.min(1.2, 0.85 + gap * 10));
           const wgt = w * margin;
 
-          W[wi] += w; L[li] += w;
-          games[wi] += w; games[li] += w;
+          // RAW record = true count of athletes finished ahead of / behind.
+          W[wi] += 1; L[li] += 1;
           (beat[winner.athleteId] ||= {});
-          beat[winner.athleteId][loser.athleteId] = (beat[winner.athleteId][loser.athleteId] || 0) + w;
+          beat[winner.athleteId][loser.athleteId] = (beat[winner.athleteId][loser.athleteId] || 0) + 1;
           (meetings[winner.athleteId] ||= {});
-          meetings[winner.athleteId][loser.athleteId] = (meetings[winner.athleteId][loser.athleteId] || 0) + w;
+          meetings[winner.athleteId][loser.athleteId] = (meetings[winner.athleteId][loser.athleteId] || 0) + 1;
           (meetings[loser.athleteId] ||= {});
-          meetings[loser.athleteId][winner.athleteId] = (meetings[loser.athleteId][winner.athleteId] || 0) + w;
+          meetings[loser.athleteId][winner.athleteId] = (meetings[loser.athleteId][winner.athleteId] || 0) + 1;
 
           // Massey: each comparison is an equation rating[wi]-rating[li] = +margin
           M[wi][wi] += wgt; M[li][li] += wgt;
@@ -125,6 +124,26 @@
         active: a.active !== false,
         _idx: idx[a.id],
       };
+    });
+
+    // Strength of schedule: the average rating of every opponent actually
+    // raced (from real head-to-head meetings). This makes "lost to 22 great
+    // runners" visible and is what lets such an athlete rate above someone who
+    // beat a weak field — the rating already reflects it, this surfaces it.
+    const scoreByIdx = (j) => scoreOf(rating[j]);
+    recs.forEach((rec) => {
+      const opps = meetings[rec.athlete.id] || {};
+      let sum = 0, cnt = 0, best = -Infinity;
+      Object.keys(opps).forEach((oid) => {
+        if (idx[oid] === undefined) return;
+        const c = opps[oid]; // times they met
+        const os = scoreByIdx(idx[oid]);
+        sum += os * c; cnt += c;
+        if (os > best) best = os;
+      });
+      rec.sos = cnt ? sum / cnt : 0;            // avg opponent quality
+      rec.bestOpponent = best === -Infinity ? 0 : best;
+      rec.opponents = cnt;                       // total head-to-head meetings
     });
 
     // National rank within gender by rating — only active athletes are ranked;
