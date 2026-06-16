@@ -3,197 +3,40 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BASE — plan your training </title>
-  <meta name="description" content="base is a clean, highly visual training planner for elite runners. Plan daily mileage, runs, and workout types." />
+  <title>Harrier — the athlete-first performance database for college cross country</title>
+  <meta name="description" content="Harrier ranks college cross country athletes from head-to-head results across every XC race and track 5k/10k. Look yourself up." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=17" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=21" />
 </head>
 <body>
-  <!-- Login / signup gate — shown until the user is authenticated -->
-  <div id="authScreen" class="auth-screen">
-    <div class="auth-card mode-login" id="authCard">
-      <div class="auth-brand">
-        <span class="brand-mark" aria-hidden="true"></span>
-        <h1 class="brand-name">base</h1>
-      </div>
-      <p class="auth-sub">plan your training</p>
-
-      <!-- Email + password — used by login and signup -->
-      <label class="field field-block account-only">
-        <span class="field-label">Email</span>
-        <input type="email" id="authEmail" placeholder="you@example.com" autocomplete="email" />
-      </label>
-      <label class="field field-block account-only">
-        <span class="field-label">Password</span>
-        <input type="password" id="authPassword" placeholder="••••••••" autocomplete="current-password" />
-      </label>
-      <label class="field field-block signup-only">
-        <span class="field-label">Confirm password</span>
-        <input type="password" id="authPassword2" placeholder="••••••••" autocomplete="new-password" />
-      </label>
-
-      <!-- New password — used by the reset/recovery flow -->
-      <label class="field field-block recovery-only">
-        <span class="field-label">New password</span>
-        <input type="password" id="newPassword" placeholder="••••••••" autocomplete="new-password" />
-      </label>
-      <label class="field field-block recovery-only">
-        <span class="field-label">Confirm new password</span>
-        <input type="password" id="newPassword2" placeholder="••••••••" autocomplete="new-password" />
-      </label>
-
-      <div class="auth-actions">
-        <button class="btn btn-primary login-only" id="loginBtn">Log in</button>
-        <button class="btn btn-ghost login-only" id="signupToggleBtn">Sign up</button>
-        <button class="btn btn-primary signup-only" id="createBtn">Create account</button>
-        <button class="btn btn-ghost signup-only" id="backBtn">Back to log in</button>
-        <button class="btn btn-primary recovery-only" id="updatePwBtn">Update password</button>
-      </div>
-
-      <button class="auth-link login-only" id="forgotBtn">Forgot password?</button>
-
-      <p class="auth-msg" id="authMsg" role="status" aria-live="polite"></p>
-    </div>
-  </div>
-
-  <header class="topbar">
-    <div class="brand">
+  <header class="nav">
+    <a class="brand" href="#/">
       <span class="brand-mark" aria-hidden="true"></span>
-      <h1 class="brand-name">base</h1>
-      <span class="brand-tag">plan your training</span>
-    </div>
-
-    <div class="topbar-controls">
-      <label class="field">
-        <span class="field-label">Plan start (Monday)</span>
-        <input type="date" id="startDate" />
-      </label>
-      <label class="field">
-        <span class="field-label">Weeks</span>
-        <input type="number" id="weekCount" min="1" max="52" value="12" />
-      </label>
-      <label class="field">
-        <span class="field-label">Units</span>
-        <select id="units">
-          <option value="mi">miles</option>
-          <option value="km">km</option>
-        </select>
-      </label>
-      <button class="btn btn-ghost" id="exportBtn" title="Download plan as a file">Export</button>
-      <button class="btn btn-ghost" id="importBtn" title="Load a plan file">Import</button>
-      <input type="file" id="importInput" accept="application/json" hidden />
-      <button class="btn btn-danger-ghost" id="resetBtn" title="Clear the whole plan">Reset</button>
-      <span class="save-status" id="saveStatus" aria-live="polite"></span>
-      <span class="user-email" id="userEmail"></span>
-      <button class="btn btn-ghost" id="logoutBtn" title="Log out">Log out</button>
+      <span class="brand-name">Harrier</span>
+    </a>
+    <nav class="nav-links">
+      <a href="#/rankings/M" data-nav="rankings">Athletes</a>
+      <a href="#/teams/M" data-nav="teams">Teams</a>
+      <a href="#/races" data-nav="races">Races</a>
+      <a href="#/methodology" data-nav="methodology">Methodology</a>
+    </nav>
+    <div class="nav-search">
+      <input type="search" id="search" placeholder="Search athletes & teams…" autocomplete="off" />
+      <div class="search-results" id="searchResults" hidden></div>
     </div>
   </header>
 
-  <section class="legend" aria-label="Workout type legend">
-    <span class="legend-title">Workout types</span>
-    <div class="legend-items" id="legend"></div>
-    <div class="legend-mods">
-      <span class="chip chip-strides">Strides</span>
-      <span class="chip chip-hills">Hill sprints</span>
-    </div>
-  </section>
+  <main id="app" class="app"></main>
 
-  <main id="calendar" class="calendar" aria-label="Weekly training calendar"></main>
+  <footer class="foot">
+    <span>Harrier · the athlete-first performance database for college cross country</span>
+    <span class="foot-note">Demo data is illustrative and not official results.</span>
+  </footer>
 
-  <section class="summary" aria-label="Plan summary">
-    <div class="summary-card">
-      <span class="summary-value" id="sumTotal">0</span>
-      <span class="summary-label" id="sumTotalLabel">total miles</span>
-    </div>
-    <div class="summary-card">
-      <span class="summary-value" id="sumAvg">0</span>
-      <span class="summary-label" id="sumAvgLabel">avg miles / week</span>
-    </div>
-    <div class="summary-card">
-      <span class="summary-value" id="sumPeak">0</span>
-      <span class="summary-label" id="sumPeakLabel">peak week</span>
-    </div>
-    <div class="summary-card">
-      <span class="summary-value" id="sumWorkouts">0</span>
-      <span class="summary-label">quality sessions</span>
-    </div>
-  </section>
-
-  <!-- Day editor -->
-  <div class="modal-backdrop" id="modalBackdrop">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-      <div class="modal-head">
-        <h2 id="modalTitle">Edit day</h2>
-        <button class="icon-btn" id="modalClose" aria-label="Close">&times;</button>
-      </div>
-
-      <div class="modal-body">
-        <div class="run-block">
-          <div class="run-head">
-            <span class="run-badge run-am">AM</span>
-            <span class="run-title">Morning run</span>
-            <span class="run-hint">optional</span>
-          </div>
-          <label class="field field-block">
-            <span class="field-label distance-label">Distance</span>
-            <input type="number" id="dMileage" min="0" step="0.1" placeholder="0" />
-          </label>
-          <div class="field-block">
-            <span class="field-label">Workout type</span>
-            <div class="type-grid" id="typeGrid"></div>
-          </div>
-          <label class="field field-block">
-            <span class="field-label">Notes (pace, route, reps…)</span>
-            <textarea id="dNote" rows="3" placeholder="e.g. 6 x 1k @ threshold, 90s float"></textarea>
-          </label>
-        </div>
-
-        <div class="run-block">
-          <div class="run-head">
-            <span class="run-badge run-pm">PM</span>
-            <span class="run-title">Evening run</span>
-            <span class="run-hint">optional</span>
-          </div>
-          <label class="field field-block">
-            <span class="field-label distance-label">Distance</span>
-            <input type="number" id="dPmMileage" min="0" step="0.1" placeholder="0" />
-          </label>
-          <div class="field-block">
-            <span class="field-label">Workout type</span>
-            <div class="type-grid" id="typePmGrid"></div>
-          </div>
-          <label class="field field-block">
-            <span class="field-label">Notes</span>
-            <textarea id="dPmNote" rows="3" placeholder="e.g. 4 mi easy shakeout"></textarea>
-          </label>
-        </div>
-
-        <div class="field-block">
-          <span class="field-label">Modifiers</span>
-          <div class="mod-row">
-            <label class="toggle">
-              <input type="checkbox" id="dStrides" />
-              <span class="toggle-pill chip-strides">Strides</span>
-            </label>
-            <label class="toggle">
-              <input type="checkbox" id="dHills" />
-              <span class="toggle-pill chip-hills">Hill sprints</span>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <div class="modal-foot">
-        <button class="btn btn-danger-ghost" id="dClear">Clear day</button>
-        <button class="btn btn-primary" id="dSave">Save</button>
-      </div>
-    </div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=17"></script>
-  <script src="app.js?v=17"></script>
+  <script src="data.js?v=21"></script>
+  <script src="engine.js?v=21"></script>
+  <script src="app.js?v=21"></script>
 </body>
 </html>

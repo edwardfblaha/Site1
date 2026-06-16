@@ -1,920 +1,491 @@
-/* base — a highly visual training planner for elite runners
- * Pure client-side: plans persist in localStorage; no backend required. */
-
-(() => {
+/* Harrier — single-page app (hash routed, no framework)
+ * Rankings are head-to-head: see engine.js. */
+(function () {
   "use strict";
 
-  // ---- Workout type definitions (order matters for legend / picker) ----
-  const TYPES = [
-    { id: "easy",      label: "Easy",      color: "var(--t-easy)" },
-    { id: "long",      label: "Long",      color: "var(--t-long)" },
-    { id: "tempo",     label: "Tempo",     color: "var(--t-tempo)" },
-    { id: "threshold", label: "Threshold", color: "var(--t-threshold)" },
-    { id: "vo2",       label: "VO2",       color: "var(--t-vo2)" },
-    { id: "anaerobic", label: "Anaerobic", color: "var(--t-anaerobic)" },
-    { id: "race",      label: "Race",      color: "var(--t-race)" },
-    { id: "rest",      label: "Rest",      color: "var(--t-rest)" },
-  ];
-  const TYPE_BY_ID = Object.fromEntries(TYPES.map((t) => [t.id, t]));
-  const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const STORE_KEY = "base.plan.v1";
+  const E = window.ENGINE.build();
+  const D = window.DATA;
+  const app = () => document.getElementById("app");
 
-  // ---- State ----
-  /** plan.days is keyed by ISO date 'YYYY-MM-DD'. */
-  let plan = defaultPlan(); // replaced with the user's plan after sign-in
-  let editingKey = null; // the day currently open in the modal
+  // ---- helpers ----
+  const fmtTime = (s) => {
+    s = Math.round(s);
+    const m = Math.floor(s / 60);
+    return `${m}:${String(s % 60).padStart(2, "0")}`;
+  };
+  const f1 = (n) => (Math.round(n * 10) / 10).toFixed(1);
+  const pct = (n) => `${Math.round(n * 100)}%`;
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const genderLabel = (g) => (g === "M" ? "Men" : "Women");
+  const ordinal = (n) => {
+    const s = ["th", "st", "nd", "rd"], v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  };
+  function scoreColor(score) {
+    const t = Math.max(0, Math.min(1, (score - 45) / 50));
+    const hue = 210 - t * 210;
+    return `hsl(${hue}, 85%, 53%)`;
+  }
+  const recById = (id) => E.recById[id];
 
-  // ---- Date helpers ----
-  function isoOf(d) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-  }
-  function parseISO(s) {
-    const [y, m, d] = s.split("-").map(Number);
-    return new Date(y, m - 1, d);
-  }
-  function addDays(d, n) {
-    const r = new Date(d);
-    r.setDate(r.getDate() + n);
-    return r;
-  }
-  function mondayOf(d) {
-    const r = new Date(d);
-    const wd = (r.getDay() + 6) % 7; // 0 = Monday
-    r.setDate(r.getDate() - wd);
-    r.setHours(0, 0, 0, 0);
-    return r;
-  }
-  const fmtRange = (a, b) =>
-    `${a.toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${b.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
-
-  // ---- Supabase client & persistence ----
-  let sb = null;           // Supabase client (created in initAuth)
-  let currentUser = null;  // the logged-in user, or null
-  let loadedUserId = null; // guards against redundant reloads
-  let saveTimer = null;    // debounce handle for saves
-
-  function defaultPlan() {
-    return {
-      startDate: isoOf(mondayOf(new Date())),
-      weeks: 12,
-      units: "mi",
-      days: {},
-    };
+  function recordBadge(rec) {
+    return `<span class="rec"><span class="w">${rec.wins}</span>–<span class="l">${rec.losses}</span></span>`;
   }
 
-  // One-time import of any plan left in this browser's localStorage, so an
-  // existing local plan is preserved when a user first signs in.
-  function readLocalPlan() {
-    try {
-      const raw = localStorage.getItem(STORE_KEY);
-      if (!raw) return null;
-      const p = JSON.parse(raw);
-      return { ...defaultPlan(), ...p, days: p.days || {} };
-    } catch {
-      return null;
-    }
+  // ---- score-by-race sparkline (uses per-race finishing strength) ----
+  function raceScores(id) {
+    // A per-race "strength" proxy for the chart: invert place share in each race.
+    const out = [];
+    D.RESULTS.filter((x) => x.athleteId === id).forEach((r) => {
+      const race = D.raceById[r.raceId];
+      const rows = D.RESULTS.filter((x) => x.raceId === r.raceId).sort((a, b) => a.seconds - b.seconds);
+      const place = rows.findIndex((x) => x.athleteId === id) + 1;
+      const beat = rows.length - place;
+      const strength = rows.length > 1 ? beat / (rows.length - 1) : 1; // 0..1
+      out.push({ race, place, field: rows.length, order: race.order, time: r.seconds,
+        val: 40 + strength * 60 });
+    });
+    return out.sort((a, b) => a.order - b.order);
   }
 
-  // Load this user's plan row from Supabase into `plan`.
-  async function loadPlan() {
-    if (!sb || !currentUser) {
-      plan = defaultPlan();
-      return;
-    }
-    try {
-      const { data, error } = await sb
-        .from("plans")
-        .select("data")
-        .eq("user_id", currentUser.id)
-        .maybeSingle();
-      if (error) throw error;
-      if (data && data.data) {
-        const p = data.data;
-        plan = { ...defaultPlan(), ...p, days: p.days || {} };
-      } else {
-        // No saved plan yet — adopt any local plan and push it to the backend.
-        const local = readLocalPlan();
-        plan = local || defaultPlan();
-        if (local) await savePlanNow();
-      }
-    } catch (e) {
-      console.error("base: could not load plan", e);
-      reportDbError("Load failed", e);
-      plan = defaultPlan();
-    }
+  function sparkline(points, w = 220, h = 40) {
+    if (points.length < 2) return "";
+    const xs = points.map((p) => p.order), ys = points.map((p) => p.val);
+    const minY = Math.min(...ys) - 4, maxY = Math.max(...ys) + 4;
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const X = (x) => 6 + ((x - minX) / Math.max(1, maxX - minX)) * (w - 12);
+    const Y = (y) => h - 6 - ((y - minY) / Math.max(1, maxY - minY)) * (h - 12);
+    const pts = points.map((p) => `${X(p.order).toFixed(1)},${Y(p.val).toFixed(1)}`);
+    const dots = points.map((p) => `<circle cx="${X(p.order).toFixed(1)}" cy="${Y(p.val).toFixed(1)}" r="2.6" fill="${scoreColor(p.val)}"></circle>`).join("");
+    return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+      <polyline points="${pts.join(" ")}" fill="none" stroke="url(#sg)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></polyline>
+      <defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7c5cff"/><stop offset="1" stop-color="#2f8fef"/></linearGradient></defs>
+      ${dots}</svg>`;
   }
 
-  // Debounced save so rapid edits collapse into a single upsert.
-  function savePlan() {
-    if (!sb) { setSaveStatus("Not saved: Supabase not configured"); return; }
-    if (!currentUser) { setSaveStatus("Not saved: not signed in"); return; }
-    setSaveStatus("Saving…");
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(savePlanNow, 400);
+  function profileChart(points) {
+    if (points.length < 2) return `<div class="muted">Not enough races to chart yet.</div>`;
+    const w = 640, h = 230, padL = 30, padB = 46, padT = 14, padR = 14;
+    const ys = points.map((p) => p.val);
+    const minY = Math.floor(Math.min(...ys) - 4), maxY = Math.ceil(Math.max(...ys) + 4);
+    const X = (i) => padL + (i / Math.max(1, points.length - 1)) * (w - padL - padR);
+    const Y = (y) => h - padB - ((y - minY) / Math.max(1, maxY - minY)) * (h - padB - padT);
+    const line = points.map((p, i) => `${X(i).toFixed(1)},${Y(p.val).toFixed(1)}`).join(" ");
+    const dots = points.map((p, i) =>
+      `<g><circle cx="${X(i).toFixed(1)}" cy="${Y(p.val).toFixed(1)}" r="5" fill="${scoreColor(p.val)}" stroke="#0b0e17" stroke-width="2"></circle>
+       <title>${esc(p.race.meet)} — ${ordinal(p.place)} of ${p.field}</title></g>`).join("");
+    const xlabels = points.map((p, i) =>
+      `<text x="${X(i).toFixed(1)}" y="${h - padB + 16}" class="ax" text-anchor="middle">${esc(shortMeet(p.race.meet))}</text>`).join("");
+    return `<svg class="chart" viewBox="0 0 ${w} ${h}">
+      <polyline points="${line}" fill="none" stroke="url(#cg)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+      <defs><linearGradient id="cg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7c5cff"/><stop offset="1" stop-color="#2f8fef"/></linearGradient></defs>
+      ${dots}${xlabels}</svg>`;
   }
-  async function savePlanNow() {
-    if (!sb || !currentUser) return;
-    try {
-      const { error } = await sb.from("plans").upsert(
-        {
-          user_id: currentUser.id,
-          data: plan,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id" }
-      );
-      if (error) throw error;
-      setSaveStatus("Saved", true);
-    } catch (e) {
-      console.error("base: could not save plan", e);
-      reportDbError("Save failed", e);
-    }
+  function shortMeet(m) {
+    return m.replace("Championships", "Champs").replace("Invitational", "Inv.").replace("Invite", "Inv.").replace("Conference", "Conf.").replace("NCAA ", "");
   }
 
-  // Show the real Supabase/Postgres error in the UI — the console isn't
-  // visible to everyone, and the actual message (table missing, RLS denial,
-  // bad column) is what we need to act on.
-  function reportDbError(prefix, e) {
-    const msg = e && (e.message || e.error_description || e.hint || e.code)
-      ? `${e.code ? "[" + e.code + "] " : ""}${e.message || e.error_description || e.hint}`
-      : "unknown error";
-    setSaveStatus(`${prefix}: ${msg}`);
-    const el = $("saveStatus");
-    if (el) el.title = JSON.stringify(e, Object.getOwnPropertyNames(e || {}));
-  }
+  // ---- views ----
+  function viewHome() {
+    const men = E.byGender.M.recs.slice(0, 5);
+    const women = E.byGender.F.recs.slice(0, 5);
+    const undef = E.allRecs.filter((r) => r.losses === 0 && r.wins > 4).sort((a, b) => b.wins - a.wins).slice(0, 5);
 
-  let saveStatusTimer = null;
-  function setSaveStatus(text, fade) {
-    const el = $("saveStatus");
-    if (!el) return;
-    el.textContent = text || "";
-    clearTimeout(saveStatusTimer);
-    if (fade) saveStatusTimer = setTimeout(() => { el.textContent = ""; }, 2000);
-  }
-
-  function getDay(key) {
-    return (
-      plan.days[key] || {
-        mileage: 0, type: "", note: "",
-        pmMileage: 0, pmType: "", pmNote: "",
-        strides: false, hills: false,
-      }
-    );
-  }
-  // A day is a "double" when it has any PM-session content.
-  function isDouble(d) {
-    return (d.pmMileage || 0) > 0 || !!d.pmType || !!d.pmNote;
-  }
-  // Total mileage for a day = AM run + PM run.
-  function dayMileage(d) {
-    return (d.mileage || 0) + (d.pmMileage || 0);
-  }
-  function dayHasContent(d) {
-    return (
-      d.mileage > 0 || d.type || d.note ||
-      isDouble(d) || d.strides || d.hills
-    );
-  }
-
-  // ---- Rendering ----
-  const $ = (id) => document.getElementById(id);
-  const unitLabel = () => (plan.units === "km" ? "km" : "mi");
-
-  // Mileage is always stored canonically in miles; convert only at the
-  // display/input boundaries so switching units re-expresses the same
-  // distance instead of relabelling the raw number.
-  const KM_PER_MI = 1.609344;
-  const toDisplay = (mi) => (plan.units === "km" ? (mi || 0) * KM_PER_MI : (mi || 0));
-  const fromDisplay = (v) => (plan.units === "km" ? (v || 0) / KM_PER_MI : (v || 0));
-  // Stored miles → rounded string in the current unit.
-  const fmtMi = (mi) => round(toDisplay(mi));
-
-  function renderLegend() {
-    const el = $("legend");
-    el.innerHTML = "";
-    for (const t of TYPES) {
-      const pill = document.createElement("span");
-      pill.className = "legend-pill";
-      pill.innerHTML = `<span class="legend-dot" style="background:${t.color}"></span>${t.label}`;
-      el.appendChild(pill);
-    }
-  }
-
-  function renderControls() {
-    $("startDate").value = plan.startDate;
-    $("weekCount").value = plan.weeks;
-    $("units").value = plan.units;
-  }
-
-  function renderCalendar() {
-    const cal = $("calendar");
-    cal.innerHTML = "";
-    const start = mondayOf(parseISO(plan.startDate));
-    const todayISO = isoOf(new Date());
-
-    // First pass: collect weekly totals to scale the volume bars.
-    const weekTotals = [];
-    for (let w = 0; w < plan.weeks; w++) {
-      let total = 0;
-      for (let i = 0; i < 7; i++) total += dayMileage(getDay(isoOf(addDays(start, w * 7 + i))));
-      weekTotals.push(total);
-    }
-    const peak = Math.max(1, ...weekTotals);
-
-    for (let w = 0; w < plan.weeks; w++) {
-      const weekStart = addDays(start, w * 7);
-      const weekEnd = addDays(weekStart, 6);
-
-      const week = document.createElement("section");
-      week.className = "week";
-
-      const head = document.createElement("div");
-      head.className = "week-head";
-      head.draggable = true;
-      head.dataset.week = w;
-      head.title = "Drag onto another week to copy all 7 days";
-      head.innerHTML = `
-        <span class="week-num">Week ${w + 1}</span>
-        <span class="week-range">${fmtRange(weekStart, weekEnd)}</span>
-        <span class="week-total">${fmtMi(weekTotals[w])}<small> ${unitLabel()}</small></span>
-        <div class="week-bar"><div class="week-bar-fill" style="width:${(weekTotals[w] / peak) * 100}%"></div></div>`;
-
-      // Drag a week onto another week to copy its 7 days there.
-      head.addEventListener("dragstart", (e) => {
-        e.stopPropagation();
-        e.dataTransfer.setData("application/x-base-week", String(w));
-        e.dataTransfer.effectAllowed = "copy";
-        head.classList.add("is-dragging");
-      });
-      head.addEventListener("dragend", () => head.classList.remove("is-dragging"));
-      head.addEventListener("dragover", (e) => {
-        if (e.dataTransfer.types.includes("application/x-base-week")) {
-          e.preventDefault();
-          head.classList.add("is-drop");
-        }
-      });
-      head.addEventListener("dragleave", () => head.classList.remove("is-drop"));
-      head.addEventListener("drop", (e) => {
-        e.preventDefault();
-        head.classList.remove("is-drop");
-        const src = parseInt(e.dataTransfer.getData("application/x-base-week"), 10);
-        if (!Number.isNaN(src)) copyWeek(src, w);
-      });
-      week.appendChild(head);
-
-      for (let i = 0; i < 7; i++) {
-        const date = addDays(weekStart, i);
-        const key = isoOf(date);
-        week.appendChild(renderDay(key, date, i, key === todayISO, key < todayISO));
-      }
-      cal.appendChild(week);
-    }
-  }
-
-  function renderDay(key, date, dayIdx, isToday, isPast) {
-    const d = getDay(key);
-    const amType = d.type ? TYPE_BY_ID[d.type] : null;
-    const pmType = d.pmType ? TYPE_BY_ID[d.pmType] : null;
-    const amHas = (d.mileage || 0) > 0 || !!d.type || !!d.note;
-    const pmHas = (d.pmMileage || 0) > 0 || !!d.pmType || !!d.pmNote;
-    const isRace = d.type === "race" || d.pmType === "race";
-    const total = dayMileage(d);
-
-    const cell = document.createElement("button");
-    cell.className =
-      "day" +
-      (isToday ? " is-today" : "") +
-      (!isToday && isPast ? " is-past" : "") +
-      (isRace ? " is-race" : "") +
-      (dayHasContent(d) ? "" : " is-empty");
-    cell.dataset.key = key;
-    cell.draggable = true;
-    cell.style.borderLeftColor = (amType || pmType) ? (amType || pmType).color : "var(--t-rest)";
-    cell.setAttribute("aria-label", `${DAY_NAMES[dayIdx]} ${key} — click to edit, ⌘/Ctrl-click to select`);
-
-    const mileageClass = total > 0 ? "" : " zero";
-
-    // Either session is optional. Show a stacked AM/PM breakdown whenever
-    // both run, or a single labelled PM row for a PM-only day. A plain
-    // AM-only day keeps the compact single type pill.
-    const session = (badge, mi, t) =>
-      `<div class="session"><span class="session-badge">${badge}</span>` +
-      `<span class="session-dot" style="background:${t ? t.color : "var(--t-rest)"}"></span>` +
-      `<span class="session-mi">${fmtMi(mi)} ${unitLabel()}</span>` +
-      (t ? `<span class="session-name">${t.id === "race" ? "🏁 " : ""}${t.label}</span>` : "") +
-      `</div>`;
-
-    let body = "";
-    if (amHas && pmHas) {
-      body = `<div class="day-sessions">
-          ${session("AM", d.mileage || 0, amType)}
-          ${session("PM", d.pmMileage || 0, pmType)}
-        </div>`;
-    } else if (pmHas) {
-      body = `<div class="day-sessions">${session("PM", d.pmMileage || 0, pmType)}</div>`;
-    } else if (amType) {
-      const pillText = amType.id === "race" ? "#fff" : "#06121f";
-      const label = amType.id === "race" ? "🏁 Race" : amType.label;
-      body = `<span class="day-type" style="background:${amType.color};color:${pillText}">${label}</span>`;
-    }
-
-    const noteHtml = d.note ? `<span class="day-note">${escapeHtml(d.note)}</span>` : "";
-
-    let mods = "";
-    if (d.strides) mods += `<span class="chip chip-strides">Strides</span>`;
-    if (d.hills) mods += `<span class="chip chip-hills">Hills</span>`;
-
-    cell.innerHTML = `
-      <div class="day-top">
-        <span class="day-name">${DAY_NAMES[dayIdx]}</span>
-        <span class="day-date">${date.getMonth() + 1}/${date.getDate()}</span>
+    return `
+    <section class="hero">
+      <h1>National cross country rankings, settled on the course.</h1>
+      <p class="lede">Every ranking on Harrier comes from <strong>head-to-head results</strong> — who beat
+      whom across every XC race and track 5k/10k. No guesswork, no fake-slow 5k conversions.
+      <strong>Look yourself up.</strong></p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="#/rankings/M">View rankings</a>
+        <a class="btn" href="#/methodology">How head-to-head ranking works</a>
       </div>
-      <span class="day-mileage${mileageClass}">${fmtMi(total)}<small> ${unitLabel()}</small></span>
-      ${body}
-      ${noteHtml}
-      ${mods ? `<div class="day-mods">${mods}</div>` : ""}`;
-
-    // Click opens the editor; modifier-click selects for copy/paste/drag.
-    cell.addEventListener("click", (e) => {
-      if (e.shiftKey) { e.preventDefault(); rangeSelect(key); return; }
-      if (e.metaKey || e.ctrlKey) { e.preventDefault(); toggleSelect(key); return; }
-      if (selection.size) { clearSelection(); return; }
-      openEditor(key, date, dayIdx);
-    });
-
-    // Drag-and-drop: move this day (or the whole selection if it's part of it).
-    cell.addEventListener("dragstart", (e) => {
-      const keys = selection.has(key) && selection.size > 1
-        ? allDayKeys().filter((k) => selection.has(k))
-        : [key];
-      e.dataTransfer.setData("text/plain", JSON.stringify(keys));
-      e.dataTransfer.effectAllowed = "copyMove";
-      cell.classList.add("is-dragging");
-    });
-    cell.addEventListener("dragend", () => cell.classList.remove("is-dragging"));
-    cell.addEventListener("dragover", (e) => { e.preventDefault(); cell.classList.add("is-drop"); });
-    cell.addEventListener("dragleave", () => cell.classList.remove("is-drop"));
-    cell.addEventListener("drop", (e) => {
-      e.preventDefault();
-      cell.classList.remove("is-drop");
-      let sourceKeys;
-      try { sourceKeys = JSON.parse(e.dataTransfer.getData("text/plain")); } catch { return; }
-      if (Array.isArray(sourceKeys) && sourceKeys.length && !sourceKeys.includes(key)) {
-        dropBlock(sourceKeys, key);
-      }
-    });
-    return cell;
+    </section>
+    <div class="home-grid">
+      ${leaderCard("Men · Top 5", men)}
+      ${leaderCard("Women · Top 5", women)}
+      <div class="card">
+        <div class="card-head"><h3>Undefeated</h3><span class="muted">most wins, no losses</span></div>
+        <ol class="mini-list">
+          ${undef.length ? undef.map((r) => `<li>
+            <a href="#/athlete/${r.athlete.id}">${esc(r.athlete.name)}</a>
+            <span class="muted">${esc(r.team.abbr)} · ${genderLabel(r.athlete.gender)}</span>
+            ${recordBadge(r)}</li>`).join("") : `<li class="muted">No unbeaten athletes yet.</li>`}
+        </ol>
+      </div>
+    </div>`;
   }
 
-  function renderSummary() {
-    const start = mondayOf(parseISO(plan.startDate));
-    let total = 0,
-      workouts = 0,
-      peak = 0;
-    const qualityTypes = new Set(["tempo", "threshold", "vo2", "anaerobic"]);
+  function leaderCard(title, list) {
+    const g = list[0] ? list[0].athlete.gender : "M";
+    return `<div class="card">
+      <div class="card-head"><h3>${esc(title)}</h3><a class="muted" href="#/rankings/${g}">full list →</a></div>
+      <ol class="mini-list">
+        ${list.map((r) => `<li>
+          <span class="rk">${r.rank}</span>
+          <a href="#/athlete/${r.athlete.id}">${esc(r.athlete.name)}${r.athlete.demo ? ' <span class="tag">you</span>' : ""}</a>
+          <span class="muted">${esc(r.team.abbr)}</span>
+          <span class="score-pill" style="background:${scoreColor(r.score)}">${f1(r.score)}</span>
+        </li>`).join("")}
+      </ol></div>`;
+  }
 
-    for (let w = 0; w < plan.weeks; w++) {
-      let weekTotal = 0;
-      for (let i = 0; i < 7; i++) {
-        const d = getDay(isoOf(addDays(start, w * 7 + i)));
-        total += dayMileage(d);
-        weekTotal += dayMileage(d);
-        if (qualityTypes.has(d.type)) workouts++;
-        if (qualityTypes.has(d.pmType)) workouts++;
-      }
-      peak = Math.max(peak, weekTotal);
+  function viewRankings(gender) {
+    gender = gender === "F" ? "F" : "M";
+    const list = E.byGender[gender].recs;
+    return `
+    <div class="page-head">
+      <div><h2>National rankings</h2>
+        <p class="muted">${list.length} ranked · ${genderLabel(gender)} · head-to-head · 2025</p></div>
+      ${genderToggle("rankings", gender)}
+    </div>
+    <div class="table-wrap">
+    <table class="rank-table">
+      <thead><tr><th>#</th><th>Athlete</th><th>Team</th><th>Yr</th>
+        <th class="num">Rating</th><th class="num">Record</th><th class="num">Win%</th><th>Season</th></tr></thead>
+      <tbody>
+        ${list.map((r) => `<tr class="${r.athlete.demo ? "is-you" : ""}">
+          <td class="rk">${r.rank}</td>
+          <td><a href="#/athlete/${r.athlete.id}">${esc(r.athlete.name)}${r.athlete.demo ? ' <span class="tag">you</span>' : ""}</a></td>
+          <td><a class="muted" href="#/team/${r.team.id}/${gender}">${esc(r.team.abbr)}</a></td>
+          <td class="muted">${esc(r.athlete.year)}</td>
+          <td class="num"><span class="score-pill" style="background:${scoreColor(r.score)}">${f1(r.score)}</span></td>
+          <td class="num">${recordBadge(r)}</td>
+          <td class="num mono">${pct(r.winPct)}</td>
+          <td class="spark-cell">${sparkline(raceScores(r.athlete.id))}</td>
+        </tr>`).join("")}
+      </tbody>
+    </table></div>`;
+  }
+
+  function genderToggle(route, gender) {
+    return `<div class="seg">
+      <a class="${gender === "M" ? "on" : ""}" href="#/${route}/M">Men</a>
+      <a class="${gender === "F" ? "on" : ""}" href="#/${route}/F">Women</a></div>`;
+  }
+
+  function viewAthlete(id) {
+    const r = recById(id);
+    if (!r) return notFound("athlete");
+    const a = r.athlete;
+    const points = raceScores(id);
+    const { bestWins, notableLosses } = E.notables(id);
+    const teammates = E.byGender[a.gender].recs
+      .filter((x) => x.team.id === r.team.id && x.athlete.id !== id).slice(0, 5);
+    const near = E.byGender[a.gender].recs
+      .filter((x) => x.athlete.id !== id)
+      .map((x) => ({ x, d: Math.abs(x.rank - r.rank) }))
+      .sort((p, q) => p.d - q.d).slice(0, 5).map((o) => o.x);
+
+    return `
+    <a class="back" href="#/rankings/${a.gender}">← rankings</a>
+    <section class="profile-head">
+      <div class="ph-id">
+        <div class="avatar" style="--c:${scoreColor(r.score)}">${initials(a.name)}</div>
+        <div><h1>${esc(a.name)}${a.demo ? ' <span class="tag">demo</span>' : ""}</h1>
+          <p class="muted"><a href="#/team/${r.team.id}/${a.gender}">${esc(r.team.name)}</a>
+            · ${genderLabel(a.gender)} · ${esc(a.year)} · ${esc(r.team.conference)}</p></div>
+      </div>
+      <div class="ph-rating">
+        <div class="big-score" style="color:${scoreColor(r.score)}">#${r.rank}</div>
+        <div class="muted">national · ${genderLabel(a.gender)}</div></div>
+    </section>
+
+    <div class="stat-strip">
+      ${stat(`<span class="score-pill big" style="background:${scoreColor(r.score)}">${f1(r.score)}</span>`, "Harrier rating")}
+      ${stat(`${r.wins}–${r.losses}`, "head-to-head record")}
+      ${stat(pct(r.winPct), "win rate")}
+      ${stat(`${f1(r.percentile)}%`, "national percentile")}
+      ${stat(`${r.raceCount}`, "races")}
+    </div>
+
+    <div class="profile-grid">
+      <div class="card">
+        <div class="card-head"><h3>Season trajectory</h3><span class="muted">finishing strength by race</span></div>
+        ${profileChart(points)}
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Signature wins</h3><span class="muted">beat higher-ranked</span></div>
+        <ol class="mini-list">
+          ${bestWins.length ? bestWins.map((w) => `<li>
+            <a href="#/athlete/${w.opp.athlete.id}">${esc(w.opp.athlete.name)}</a>
+            <span class="muted">#${w.opp.rank}</span>
+            <span class="rec ok">beat ×${w.count}</span></li>`).join("")
+            : `<li class="muted">No wins over higher-ranked athletes yet.</li>`}
+        </ol>
+        <div class="card-head" style="margin-top:14px"><h3>Notable losses</h3><span class="muted">lost to lower-ranked</span></div>
+        <ol class="mini-list">
+          ${notableLosses.length ? notableLosses.map((l) => `<li>
+            <a href="#/athlete/${l.opp.athlete.id}">${esc(l.opp.athlete.name)}</a>
+            <span class="muted">#${l.opp.rank}</span>
+            <span class="rec bad">lost ×${l.count}</span></li>`).join("")
+            : `<li class="muted">No losses to lower-ranked athletes.</li>`}
+        </ol>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>Race log</h3><span class="muted">cross country + track 5k/10k</span></div>
+      <div class="table-wrap">
+      <table class="rank-table">
+        <thead><tr><th>Date</th><th>Meet</th><th>Type</th><th class="num">Time</th><th class="num">Place</th><th class="num">Beat</th></tr></thead>
+        <tbody>
+          ${points.map((p) => `<tr>
+            <td class="muted mono">${esc(p.race.date.slice(5))}</td>
+            <td><a href="#/race/${p.race.id}">${esc(p.race.meet)}</a></td>
+            <td>${typePill(p.race)}</td>
+            <td class="num mono">${fmtTime(p.time)}</td>
+            <td class="num">${ordinal(p.place)} <span class="muted">/ ${p.field}</span></td>
+            <td class="num">${p.field - p.place}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table></div>
+    </div>
+
+    <div class="profile-grid">
+      <div class="card">
+        <div class="card-head"><h3>Ranked near you</h3><a class="muted" href="#/rankings/${a.gender}">full list →</a></div>
+        <ol class="mini-list">
+          ${near.map((x) => `<li><span class="rk">${x.rank}</span>
+            <a href="#/athlete/${x.athlete.id}">${esc(x.athlete.name)}</a>
+            <span class="muted">${esc(x.team.abbr)}</span>
+            ${h2hMini(id, x.athlete.id)}
+            <span class="score-pill" style="background:${scoreColor(x.score)}">${f1(x.score)}</span></li>`).join("")}
+        </ol>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Teammates</h3><a class="muted" href="#/team/${r.team.id}/${a.gender}">team →</a></div>
+        <ol class="mini-list">
+          ${teammates.map((t) => `<li><span class="rk">${t.rank}</span>
+            <a href="#/athlete/${t.athlete.id}">${esc(t.athlete.name)}</a>
+            <span class="muted">${esc(t.athlete.year)}</span>
+            <span class="score-pill" style="background:${scoreColor(t.score)}">${f1(t.score)}</span></li>`).join("")}
+        </ol>
+      </div>
+    </div>`;
+  }
+
+  function h2hMini(idA, idB) {
+    const { aWins, bWins } = E.h2h(idA, idB);
+    if (aWins + bWins === 0) return `<span class="muted h2h">—</span>`;
+    const cls = aWins > bWins ? "ok" : aWins < bWins ? "bad" : "";
+    return `<span class="rec h2h ${cls}" title="head-to-head">${aWins}–${bWins}</span>`;
+  }
+
+  function typePill(race) {
+    if (race.type === "TRACK") return `<span class="pill pt">${race.distanceM / 1000}k track</span>`;
+    return `<span class="pill px">XC ${race.distanceM / 1000}k</span>`;
+  }
+
+  function viewTeams(gender) {
+    gender = gender === "F" ? "F" : "M";
+    const list = E.teams.filter((t) => t.gender === gender).sort((a, b) => b.rating - a.rating);
+    return `
+    <div class="page-head"><div><h2>Team rankings</h2>
+      <p class="muted">top-5 scoring · ${genderLabel(gender)}</p></div>${genderToggle("teams", gender)}</div>
+    <div class="table-wrap">
+    <table class="rank-table">
+      <thead><tr><th>#</th><th>Team</th><th>Conf.</th><th class="num">Team rating</th><th class="num">Depth (7)</th><th>Scoring five</th></tr></thead>
+      <tbody>
+        ${list.map((t, i) => `<tr>
+          <td class="rk">${i + 1}</td>
+          <td><a href="#/team/${t.team.id}/${gender}">${esc(t.team.name)}</a></td>
+          <td class="muted">${esc(t.team.conference)}</td>
+          <td class="num"><span class="score-pill" style="background:${scoreColor(t.rating)}">${f1(t.rating)}</span></td>
+          <td class="num">${f1(t.depth)}</td>
+          <td class="five">${t.top5.map((x) => `<a href="#/athlete/${x.athlete.id}" title="${esc(x.athlete.name)} · #${x.rank}" class="dot" style="background:${scoreColor(x.score)}"></a>`).join("")}</td>
+        </tr>`).join("")}
+      </tbody></table></div>`;
+  }
+
+  function viewTeam(id, gender) {
+    gender = gender === "F" ? "F" : "M";
+    const team = D.teamById[id];
+    if (!team) return notFound("team");
+    const t = E.teams.find((x) => x.team.id === id && x.gender === gender);
+    const roster = E.byGender[gender].recs.filter((x) => x.team.id === id);
+    if (!roster.length) return `<a class="back" href="#/teams/${gender}">← teams</a><p class="muted">No ${genderLabel(gender).toLowerCase()} roster for ${esc(team.name)} in the demo.</p>`;
+    return `
+    <a class="back" href="#/teams/${gender}">← teams</a>
+    <section class="profile-head">
+      <div class="ph-id"><div class="avatar" style="--c:${t ? scoreColor(t.rating) : "#888"}">${esc(team.abbr)}</div>
+        <div><h1>${esc(team.name)}</h1>
+          <p class="muted">${esc(team.conference)} · ${genderLabel(gender)} · ${roster.length} on roster</p></div></div>
+      ${t ? `<div class="ph-rating"><div class="big-score" style="color:${scoreColor(t.rating)}">${ordinal(t.rankG)}</div>
+        <div class="muted">national team rank</div></div>` : ""}
+      <div class="seg seg-sm" style="margin-left:14px">
+        <a class="${gender === "M" ? "on" : ""}" href="#/team/${id}/M">Men</a>
+        <a class="${gender === "F" ? "on" : ""}" href="#/team/${id}/F">Women</a></div>
+    </section>
+    <div class="table-wrap">
+    <table class="rank-table">
+      <thead><tr><th>#</th><th>Athlete</th><th>Yr</th><th class="num">Nat'l</th><th class="num">Rating</th><th class="num">Record</th><th>Season</th></tr></thead>
+      <tbody>
+        ${roster.map((a, i) => `<tr class="${i < 5 ? "scoring" : ""}">
+          <td class="rk">${i + 1}${i < 5 ? '<span class="s5" title="scoring five">•</span>' : ""}</td>
+          <td><a href="#/athlete/${a.athlete.id}">${esc(a.athlete.name)}</a></td>
+          <td class="muted">${esc(a.athlete.year)}</td>
+          <td class="num muted">#${a.rank}</td>
+          <td class="num"><span class="score-pill" style="background:${scoreColor(a.score)}">${f1(a.score)}</span></td>
+          <td class="num">${recordBadge(a)}</td>
+          <td class="spark-cell">${sparkline(raceScores(a.athlete.id))}</td>
+        </tr>`).join("")}
+      </tbody></table></div>`;
+  }
+
+  function viewRaces() {
+    const byDate = [...D.RACES].sort((a, b) => b.date.localeCompare(a.date) || a.gender.localeCompare(b.gender));
+    return `
+    <div class="page-head"><div><h2>Races</h2><p class="muted">${D.RACES.length} races · XC + track 5k/10k</p></div></div>
+    <div class="race-list">
+      ${byDate.map((r) => {
+        const n = D.RESULTS.filter((p) => p.raceId === r.id).length;
+        return `<a class="race-row" href="#/race/${r.id}">
+          <div class="rr-date mono">${esc(r.date.slice(5))}</div>
+          <div class="rr-main"><div class="rr-meet">${esc(r.meet)} <span class="pill ${r.gender === "M" ? "pm" : "pf"}">${genderLabel(r.gender)}</span> ${typePill(r)}</div>
+            <div class="muted">${esc(r.courseName)} · ${esc(r.place)}</div></div>
+          <div class="rr-n muted">${n} finishers →</div></a>`;
+      }).join("")}
+    </div>`;
+  }
+
+  function viewRace(id) {
+    const r = D.raceById[id];
+    if (!r) return notFound("race");
+    const rows = D.RESULTS.filter((p) => p.raceId === id).sort((a, b) => a.seconds - b.seconds);
+    const win = rows[0];
+    return `
+    <a class="back" href="#/races">← races</a>
+    <section class="profile-head">
+      <div class="ph-id"><div class="avatar" style="--c:#7c5cff">${esc((r.courseName || "XC").slice(0, 2).toUpperCase())}</div>
+        <div><h1>${esc(r.meet)} <span class="pill ${r.gender === "M" ? "pm" : "pf"}">${genderLabel(r.gender)}</span></h1>
+          <p class="muted">${esc(r.courseName)} · ${esc(r.place)} · ${esc(r.date)} · ${typePill(r).replace(/<[^>]+>/g, "")}</p></div></div>
+    </section>
+    <div class="table-wrap">
+    <table class="rank-table">
+      <thead><tr><th>Pl</th><th>Athlete</th><th>Team</th><th class="num">Time</th><th class="num">Gap</th></tr></thead>
+      <tbody>
+        ${rows.map((p, i) => `<tr>
+          <td class="rk">${i + 1}</td>
+          <td><a href="#/athlete/${p.athleteId}">${esc(D.athleteById[p.athleteId].name)}</a></td>
+          <td><a class="muted" href="#/team/${p.teamId}/${r.gender}">${esc(D.teamById[p.teamId].abbr)}</a></td>
+          <td class="num mono">${fmtTime(p.seconds)}</td>
+          <td class="num mono muted">${i === 0 ? "—" : "+" + fmtTime(p.seconds - win.seconds)}</td>
+        </tr>`).join("")}
+      </tbody></table></div>`;
+  }
+
+  function viewMethodology() {
+    return `
+    <div class="page-head"><div><h2>Methodology</h2>
+      <p class="muted">Rankings you can argue with your teammates about — because they're based on results.</p></div></div>
+    <div class="prose card">
+      <h3>1 · Rankings come from head-to-head results, not converted times</h3>
+      <p>Most rankings convert every cross country race into a "5k equivalent" and sort the times.
+      Those conversions are shaky — and for men they tend to read artificially slow. Harrier throws that
+      out. Your rank is built from <strong>who you actually beat</strong>, across <strong>every race</strong>:
+      all cross country races plus track 5000m and 10000m.</p>
+
+      <h3>2 · Every race is a bracket of matchups</h3>
+      <p>In a race of 200 runners, the winner beats 199 people, second beats 198, and so on. We record
+      every one of those pairwise results. Beating someone by a stride and beating them by a minute both
+      count as a win, but bigger margins carry slightly more weight as evidence.</p>
+
+      <h3>3 · Wins are connected and transitive</h3>
+      <p>You don't have to race the #1 runner to be ranked near them. If you beat athletes who beat the
+      top names, that chain lifts you. Harrier solves a single national rating per gender (a Massey-style
+      least-squares system) so that rating gaps best explain every head-to-head result at once — the same
+      family of math behind respected team-sport ratings.</p>
+
+      <h3>4 · Recent and championship races count more</h3>
+      <p>A September matchup matters; a November one matters more. Later-season races carry more weight,
+      so the rankings sharpen exactly when the racing does — and they update fast after each meet.</p>
+
+      <h3>5 · Track results strengthen the web</h3>
+      <p>Cross country fields don't all overlap, which can leave regions weakly connected. Track 5k/10k
+      results add thousands of extra matchups between athletes who don't always meet on the country,
+      tightening the national picture. We use them as <em>head-to-head evidence</em>, never as a time to
+      convert.</p>
+
+      <h3>6 · Teams score the way XC scores</h3>
+      <p>A team's rating is the average of its <strong>top five</strong> ranked athletes, with a depth
+      figure across seven — because the 6th and 7th runners decide championships.</p>
+
+      <h3>Where the data comes from</h3>
+      <p>Harrier is designed to ingest results from <strong>TFRRS</strong> (tfrrs.org), the official NCAA
+      results database — every meet, every finisher. The figures on this demo are synthetic so you can
+      explore every page today; the head-to-head method is exactly what runs on real results.</p>
+      <p class="muted">Demo data is illustrative and not official results.</p>
+    </div>`;
+  }
+
+  // ---- small components ----
+  function stat(value, label) {
+    return `<div class="stat"><div class="stat-v">${value}</div><div class="stat-l">${esc(label)}</div></div>`;
+  }
+  function initials(name) { return name.split(/\s+/).map((p) => p[0]).join("").slice(0, 2).toUpperCase(); }
+  function notFound(what) {
+    return `<div class="empty"><h2>Not found</h2><p class="muted">That ${esc(what)} isn't in the demo.</p><a class="btn" href="#/">Go home</a></div>`;
+  }
+
+  // ---- search ----
+  function runSearch(q) {
+    q = q.trim().toLowerCase();
+    const box = document.getElementById("searchResults");
+    if (!q) { box.hidden = true; box.innerHTML = ""; return; }
+    const aMatches = E.allRecs.filter((r) => r.athlete.name.toLowerCase().includes(q))
+      .sort((a, b) => b.score - a.score).slice(0, 6);
+    const tMatches = D.TEAMS.filter((t) => t.name.toLowerCase().includes(q) || t.abbr.toLowerCase().includes(q)).slice(0, 4);
+    if (!aMatches.length && !tMatches.length) { box.hidden = false; box.innerHTML = `<div class="sr-empty">No matches</div>`; return; }
+    box.hidden = false;
+    box.innerHTML =
+      aMatches.map((r) => `<a class="sr-item" href="#/athlete/${r.athlete.id}">
+        <span class="sr-dot" style="background:${scoreColor(r.score)}"></span>
+        <span>${esc(r.athlete.name)}</span>
+        <span class="muted">${esc(r.team.abbr)} · #${r.rank} ${genderLabel(r.athlete.gender)}</span>
+        <span class="score-pill sm" style="background:${scoreColor(r.score)}">${f1(r.score)}</span></a>`).join("") +
+      tMatches.map((t) => `<a class="sr-item" href="#/team/${t.id}/M">
+        <span class="sr-dot team"></span><span>${esc(t.name)}</span>
+        <span class="muted">team · ${esc(t.conference)}</span></a>`).join("");
+  }
+
+  // ---- router ----
+  function route() {
+    const parts = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
+    let html;
+    switch (parts[0]) {
+      case undefined: case "": html = viewHome(); break;
+      case "rankings": html = viewRankings(parts[1]); break;
+      case "teams": html = viewTeams(parts[1]); break;
+      case "team": html = viewTeam(parts[1], parts[2]); break;
+      case "athlete": html = viewAthlete(parts[1]); break;
+      case "races": html = viewRaces(); break;
+      case "race": html = viewRace(parts[1]); break;
+      case "methodology": html = viewMethodology(); break;
+      default: html = notFound("page");
     }
-
-    const u = unitLabel();
-    $("sumTotal").textContent = fmtMi(total);
-    $("sumAvg").textContent = fmtMi(total / Math.max(1, plan.weeks));
-    $("sumPeak").textContent = fmtMi(peak);
-    $("sumWorkouts").textContent = workouts;
-    $("sumTotalLabel").textContent = `total ${u}`;
-    $("sumAvgLabel").textContent = `avg ${u} / week`;
-    $("sumPeakLabel").textContent = `peak week (${u})`;
+    app().innerHTML = html;
+    document.querySelectorAll(".nav-links a").forEach((el) => el.classList.toggle("active", el.dataset.nav === parts[0]));
+    window.scrollTo(0, 0);
+    const box = document.getElementById("searchResults");
+    if (box) box.hidden = true;
   }
 
-  function renderAll() {
-    renderControls();
-    renderLegend();
-    renderCalendar();
-    renderSummary();
-    applySelectionClasses();
-  }
-
-  // ---- Selection, copy / paste & drag ----
-  const selection = new Set(); // selected day keys (ISO dates)
-  let clipboard = null;        // array of copied day entries (in date order)
-  let lastAnchor = null;       // anchor for shift-range selection
-
-  // Ordered list of every day key currently shown.
-  function allDayKeys() {
-    const start = mondayOf(parseISO(plan.startDate));
-    const keys = [];
-    for (let i = 0; i < plan.weeks * 7; i++) keys.push(isoOf(addDays(start, i)));
-    return keys;
-  }
-  function cloneEntry(d) {
-    return {
-      mileage: d.mileage || 0, type: d.type || "", note: d.note || "",
-      pmMileage: d.pmMileage || 0, pmType: d.pmType || "", pmNote: d.pmNote || "",
-      double: !!d.double, strides: !!d.strides, hills: !!d.hills,
-    };
-  }
-  function setEntry(key, entry) {
-    const e = cloneEntry(entry);
-    if (dayHasContent(e)) plan.days[key] = e;
-    else delete plan.days[key];
-  }
-
-  function selectionInfo() {
-    if (!selection.size) return "";
-    return `${selection.size} selected · ⌘/Ctrl+C copy, ⌘/Ctrl+V paste`;
-  }
-  function updateSelectionStatus() { setSaveStatus(selectionInfo()); }
-  function applySelectionClasses() {
-    document.querySelectorAll(".day").forEach((el) => {
-      el.classList.toggle("is-selected", selection.has(el.dataset.key));
-    });
-  }
-  function clearSelection() {
-    selection.clear();
-    applySelectionClasses();
-    updateSelectionStatus();
-  }
-  function toggleSelect(key) {
-    if (selection.has(key)) selection.delete(key);
-    else selection.add(key);
-    lastAnchor = key;
-    applySelectionClasses();
-    updateSelectionStatus();
-  }
-  function rangeSelect(key) {
-    const keys = allDayKeys();
-    const a = keys.indexOf(lastAnchor == null ? key : lastAnchor);
-    const b = keys.indexOf(key);
-    if (a === -1 || b === -1) { toggleSelect(key); return; }
-    const [lo, hi] = a < b ? [a, b] : [b, a];
-    for (let i = lo; i <= hi; i++) selection.add(keys[i]);
-    applySelectionClasses();
-    updateSelectionStatus();
-  }
-
-  function copySelection() {
-    if (!selection.size) return;
-    const keys = allDayKeys().filter((k) => selection.has(k));
-    clipboard = keys.map((k) => cloneEntry(getDay(k)));
-    setSaveStatus(`Copied ${clipboard.length} day${clipboard.length > 1 ? "s" : ""}`, true);
-  }
-  function pasteSelection() {
-    if (!clipboard || !clipboard.length) return;
-    const keys = allDayKeys();
-    const targets = keys.filter((k) => selection.has(k));
-    if (!targets.length) { setSaveStatus("Select day(s) to paste onto", true); return; }
-    pushUndo();
-    if (clipboard.length === 1) {
-      // One copied day fills every selected target.
-      targets.forEach((k) => setEntry(k, clipboard[0]));
-    } else {
-      // A copied block pastes from the earliest selected day onward.
-      const startIdx = keys.indexOf(targets[0]);
-      clipboard.forEach((entry, i) => {
-        const tk = keys[startIdx + i];
-        if (tk) setEntry(tk, entry);
-      });
-    }
-    savePlan();
-    renderCalendar();
-    renderSummary();
-    applySelectionClasses();
-    setSaveStatus("Pasted", true);
-  }
-  // Drag a day (or the whole selection) and drop it onto a target day.
-  function dropBlock(sourceKeys, targetKey) {
-    const keys = allDayKeys();
-    const ordered = keys.filter((k) => sourceKeys.includes(k));
-    const entries = ordered.map((k) => cloneEntry(getDay(k)));
-    const startIdx = keys.indexOf(targetKey);
-    if (startIdx === -1) return;
-    pushUndo();
-    entries.forEach((entry, i) => {
-      const tk = keys[startIdx + i];
-      if (tk) setEntry(tk, entry);
-    });
-    savePlan();
-    renderCalendar();
-    renderSummary();
-    applySelectionClasses();
-    setSaveStatus(entries.length > 1 ? `Moved ${entries.length} days` : "Copied day", true);
-  }
-
-  // Copy all 7 days of one week onto another week (dragging a week onto a week).
-  function copyWeek(srcWeek, destWeek) {
-    if (srcWeek === destWeek) return;
-    const start = mondayOf(parseISO(plan.startDate));
-    // Warn before clobbering a destination week that already has training data.
-    let destHasData = false;
-    for (let i = 0; i < 7; i++) {
-      if (dayHasContent(getDay(isoOf(addDays(start, destWeek * 7 + i))))) { destHasData = true; break; }
-    }
-    if (destHasData &&
-        !confirm(`Week ${destWeek + 1} already has training data. Overwrite all 7 days with week ${srcWeek + 1}? You can undo this with ⌘/Ctrl+Z.`)) {
-      return;
-    }
-    pushUndo();
-    for (let i = 0; i < 7; i++) {
-      const srcKey = isoOf(addDays(start, srcWeek * 7 + i));
-      const destKey = isoOf(addDays(start, destWeek * 7 + i));
-      setEntry(destKey, getDay(srcKey));
-    }
-    savePlan();
-    renderCalendar();
-    renderSummary();
-    applySelectionClasses();
-    setSaveStatus(`Copied week ${srcWeek + 1} → week ${destWeek + 1}`, true);
-  }
-
-  // ---- Undo ----
-  // Snapshot the plan before each mutation so ⌘/Ctrl+Z can revert it.
-  const undoStack = [];
-  const MAX_UNDO = 50;
-  function pushUndo() {
-    undoStack.push(JSON.parse(JSON.stringify(plan)));
-    if (undoStack.length > MAX_UNDO) undoStack.shift();
-  }
-  function undo() {
-    if (!undoStack.length) { setSaveStatus("Nothing to undo", true); return; }
-    plan = undoStack.pop();
-    savePlan();
-    renderAll();
-    setSaveStatus("Undone", true);
-  }
-
-  // ---- Day editor modal ----
-  function buildTypeGrid(gridId) {
-    const grid = $(gridId);
-    grid.innerHTML = "";
-    for (const t of TYPES) {
-      const opt = document.createElement("button");
-      opt.type = "button";
-      opt.className = "type-opt";
-      opt.dataset.type = t.id;
-      opt.innerHTML = `<span class="legend-dot" style="background:${t.color}"></span>${t.label}`;
-      opt.addEventListener("click", () => {
-        const wasSelected = opt.classList.contains("selected");
-        grid.querySelectorAll(".type-opt").forEach((o) => {
-          o.classList.remove("selected");
-          o.style.borderColor = "";
-        });
-        // Allow clicking the active type to clear it.
-        if (!wasSelected) {
-          opt.classList.add("selected");
-          opt.style.borderColor = t.color;
-        }
-      });
-      grid.appendChild(opt);
-    }
-  }
-
-  function selectedType(gridId) {
-    const sel = $(gridId).querySelector(".type-opt.selected");
-    return sel ? sel.dataset.type : "";
-  }
-  function setSelectedType(gridId, id) {
-    $(gridId).querySelectorAll(".type-opt").forEach((o) => {
-      const on = o.dataset.type === id;
-      o.classList.toggle("selected", on);
-      o.style.borderColor = on && id ? TYPE_BY_ID[id].color : "";
-    });
-  }
-
-  function openEditor(key, date, dayIdx) {
-    editingKey = key;
-    const d = getDay(key);
-    $("modalTitle").textContent = `${DAY_NAMES[dayIdx]} · ${date.toLocaleDateString(undefined, { month: "long", day: "numeric" })}`;
-    document.querySelectorAll(".distance-label").forEach((el) => {
-      el.textContent = plan.units === "km" ? "Distance (km)" : "Distance (mi)";
-    });
-    $("dMileage").value = d.mileage ? round(toDisplay(d.mileage)) : "";
-    setSelectedType("typeGrid", d.type || "");
-    $("dNote").value = d.note || "";
-    $("dPmMileage").value = d.pmMileage ? round(toDisplay(d.pmMileage)) : "";
-    setSelectedType("typePmGrid", d.pmType || "");
-    $("dPmNote").value = d.pmNote || "";
-    $("dStrides").checked = !!d.strides;
-    $("dHills").checked = !!d.hills;
-    autoGrow($("dNote"));
-    autoGrow($("dPmNote"));
-    $("modalBackdrop").classList.add("open");
-    $("dMileage").focus();
-  }
-
-  // Expand a textarea to fit its content so long notes are fully visible.
-  function autoGrow(el) {
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 320) + "px";
-  }
-
-  function closeEditor() {
-    $("modalBackdrop").classList.remove("open");
-    editingKey = null;
-  }
-
-  function saveEditor() {
-    if (!editingKey) return;
-    // Inputs are in the current display unit; store canonically in miles.
-    const pmMileage = fromDisplay(Math.max(0, parseFloat($("dPmMileage").value) || 0));
-    const pmType = selectedType("typePmGrid");
-    const pmNote = $("dPmNote").value.trim();
-    const entry = {
-      mileage: fromDisplay(Math.max(0, parseFloat($("dMileage").value) || 0)),
-      type: selectedType("typeGrid"),
-      note: $("dNote").value.trim(),
-      pmMileage,
-      pmType,
-      pmNote,
-      double: pmMileage > 0 || !!pmType || !!pmNote,
-      strides: $("dStrides").checked,
-      hills: $("dHills").checked,
-    };
-    pushUndo();
-    if (dayHasContent(entry)) plan.days[editingKey] = entry;
-    else delete plan.days[editingKey];
-    savePlan();
-    closeEditor();
-    renderCalendar();
-    renderSummary();
-  }
-
-  function clearEditingDay() {
-    pushUndo();
-    if (editingKey) delete plan.days[editingKey];
-    savePlan();
-    closeEditor();
-    renderCalendar();
-    renderSummary();
-  }
-
-  // ---- Import / export ----
-  function exportPlan() {
-    const blob = new Blob([JSON.stringify(plan, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `base-plan-${plan.startDate}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  function importPlan(file) {
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const p = JSON.parse(reader.result);
-        plan = { ...defaultPlan(), ...p, days: p.days || {} };
-        savePlan();
-        renderAll();
-      } catch {
-        alert("That file could not be read as a base plan.");
-      }
-    };
-    reader.readAsText(file);
-  }
-
-  // ---- Utilities ----
-  function round(n) {
-    const r = Math.round((n || 0) * 10) / 10;
-    return Number.isInteger(r) ? String(r) : r.toFixed(1);
-  }
-  function escapeHtml(s) {
-    return s.replace(/[&<>"']/g, (c) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
-    );
-  }
-
-  // ---- Wire up events ----
   function init() {
-    buildTypeGrid("typeGrid");
-    buildTypeGrid("typePmGrid");
-    renderAll();
-
-    $("startDate").addEventListener("change", (e) => {
-      plan.startDate = isoOf(mondayOf(parseISO(e.target.value)));
-      savePlan();
-      renderAll();
-    });
-    $("weekCount").addEventListener("change", (e) => {
-      plan.weeks = Math.min(52, Math.max(1, parseInt(e.target.value, 10) || 1));
-      savePlan();
-      renderAll();
-    });
-    $("units").addEventListener("change", (e) => {
-      plan.units = e.target.value;
-      savePlan();
-      renderAll();
-    });
-
-    $("exportBtn").addEventListener("click", exportPlan);
-    $("importBtn").addEventListener("click", () => $("importInput").click());
-    $("importInput").addEventListener("change", (e) => {
-      if (e.target.files[0]) importPlan(e.target.files[0]);
-      e.target.value = "";
-    });
-    $("resetBtn").addEventListener("click", () => {
-      if (confirm("Clear the entire plan? You can undo this with ⌘/Ctrl+Z.")) {
-        pushUndo();
-        plan = defaultPlan();
-        savePlan();
-        renderAll();
+    const s = document.getElementById("search");
+    s.addEventListener("input", (e) => runSearch(e.target.value));
+    s.addEventListener("focus", (e) => { if (e.target.value) runSearch(e.target.value); });
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".nav-search")) {
+        const box = document.getElementById("searchResults");
+        if (box) box.hidden = true;
       }
     });
-
-    $("dSave").addEventListener("click", saveEditor);
-    $("dClear").addEventListener("click", clearEditingDay);
-    $("dNote").addEventListener("input", (e) => autoGrow(e.target));
-    $("dPmNote").addEventListener("input", (e) => autoGrow(e.target));
-    $("modalClose").addEventListener("click", closeEditor);
-    $("modalBackdrop").addEventListener("click", (e) => {
-      if (e.target === $("modalBackdrop")) closeEditor();
-    });
-    document.addEventListener("keydown", (e) => {
-      // Editor shortcuts take priority while the modal is open.
-      if ($("modalBackdrop").classList.contains("open")) {
-        if (e.key === "Escape") closeEditor();
-        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) saveEditor();
-        return;
-      }
-      // Don't hijack shortcuts while typing in a field.
-      const tag = (e.target.tagName || "").toLowerCase();
-      if (tag === "input" || tag === "textarea" || tag === "select") return;
-
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
-        e.preventDefault();
-        undo();
-      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "c") {
-        if (selection.size) { e.preventDefault(); copySelection(); }
-      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "v") {
-        if (clipboard) { e.preventDefault(); pasteSelection(); }
-      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a") {
-        e.preventDefault();
-        allDayKeys().forEach((k) => selection.add(k));
-        applySelectionClasses();
-        updateSelectionStatus();
-      } else if (e.key === "Escape") {
-        clearSelection();
-      }
-    });
+    window.addEventListener("hashchange", route);
+    route();
   }
 
-  // ---- Authentication (Supabase) ----
-  function setAuthMsg(text, isError) {
-    const el = $("authMsg");
-    el.textContent = text || "";
-    el.classList.toggle("error", !!isError);
-  }
-
-  function credentialsMissing() {
-    const url = window.SUPABASE_URL;
-    const key = window.SUPABASE_ANON_KEY;
-    return !url || !key || url === "SUPABASE_URL" || key === "SUPABASE_ANON_KEY";
-  }
-
-  // Show the app when signed in, the login screen otherwise.
-  function handleSession(session) {
-    const user = session ? session.user : null;
-    currentUser = user;
-    if (user) {
-      $("userEmail").textContent = user.email || "";
-      document.body.classList.add("authed");
-      if (loadedUserId !== user.id) {
-        loadedUserId = user.id;
-        // Defer the DB read: supabase-js holds an auth lock during the
-        // onAuthStateChange callback, and awaiting a query inside it can
-        // deadlock so the plan never loads. Running it on the next tick
-        // (outside the callback) lets the load and subsequent saves work.
-        setSaveStatus("Loading…");
-        setTimeout(async () => {
-          await loadPlan();
-          renderAll();
-          setSaveStatus("");
-        }, 0);
-      }
-    } else {
-      loadedUserId = null;
-      document.body.classList.remove("authed");
-      plan = defaultPlan();
-    }
-  }
-
-  function initAuth() {
-    if (!window.supabase || !window.supabase.createClient) {
-      setAuthMsg("Could not load Supabase. Check your connection and refresh.", true);
-      return;
-    }
-    if (credentialsMissing()) {
-      setAuthMsg("Add your Supabase URL and anon key in config.js to enable sign-in.", true);
-      return;
-    }
-    sb = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-
-    const email = () => $("authEmail").value.trim();
-    const password = () => $("authPassword").value;
-
-    // Switch the card between "login", "signup" and "recovery" modes.
-    function setMode(mode) {
-      const card = $("authCard");
-      card.classList.remove("mode-login", "mode-signup", "mode-recovery");
-      card.classList.add("mode-" + mode);
-      setAuthMsg("");
-    }
-
-    async function login() {
-      setAuthMsg("");
-      // Require both fields up front. Calling Supabase with an empty email or
-      // password is treated as an anonymous sign-in, which surfaces the
-      // confusing "Anonymous sign-ins are disabled" error.
-      if (!email() || !password()) {
-        setAuthMsg("Enter your email and password.", true);
-        return;
-      }
-      const { error } = await sb.auth.signInWithPassword({ email: email(), password: password() });
-      if (error) setAuthMsg(error.message, true);
-    }
-
-    // Sign up requires an email and the password typed twice to confirm.
-    async function createAccount() {
-      setAuthMsg("");
-      const pw = password();
-      const pw2 = $("authPassword2").value;
-      if (!email()) { setAuthMsg("Enter your email.", true); return; }
-      if (!pw || !pw2) { setAuthMsg("Enter your password twice to confirm.", true); return; }
-      if (pw.length < 6) { setAuthMsg("Password must be at least 6 characters.", true); return; }
-      if (pw !== pw2) { setAuthMsg("Passwords do not match.", true); return; }
-      const { data, error } = await sb.auth.signUp({ email: email(), password: pw });
-      if (error) { setAuthMsg(error.message, true); return; }
-      // If the project requires email confirmation there's no session yet.
-      if (!data.session) setAuthMsg("Account created — check your email to confirm, then log in.");
-    }
-
-    // Email a password-reset link. The link returns here and fires a
-    // PASSWORD_RECOVERY event, which switches the card to recovery mode.
-    async function forgotPassword() {
-      setAuthMsg("");
-      if (!email()) { setAuthMsg("Enter your email above, then tap reset.", true); return; }
-      const { error } = await sb.auth.resetPasswordForEmail(email(), {
-        redirectTo: window.location.href,
-      });
-      if (error) { setAuthMsg(error.message, true); return; }
-      setAuthMsg("Password reset email sent — check your inbox.");
-    }
-
-    // Set a new password after following the reset email.
-    async function updatePassword() {
-      setAuthMsg("");
-      const pw = $("newPassword").value;
-      const pw2 = $("newPassword2").value;
-      if (!pw || !pw2) { setAuthMsg("Enter your new password twice.", true); return; }
-      if (pw.length < 6) { setAuthMsg("Password must be at least 6 characters.", true); return; }
-      if (pw !== pw2) { setAuthMsg("Passwords do not match.", true); return; }
-      const { error } = await sb.auth.updateUser({ password: pw });
-      if (error) { setAuthMsg(error.message, true); return; }
-      setMode("login");
-      setAuthMsg("Password updated — you're signed in.");
-    }
-
-    $("loginBtn").addEventListener("click", login);
-    $("signupToggleBtn").addEventListener("click", () => setMode("signup"));
-    $("createBtn").addEventListener("click", createAccount);
-    $("backBtn").addEventListener("click", () => setMode("login"));
-    $("forgotBtn").addEventListener("click", forgotPassword);
-    $("updatePwBtn").addEventListener("click", updatePassword);
-    $("logoutBtn").addEventListener("click", () => sb.auth.signOut());
-    $("authPassword").addEventListener("keydown", (e) => { if (e.key === "Enter") login(); });
-    $("authPassword2").addEventListener("keydown", (e) => { if (e.key === "Enter") createAccount(); });
-    $("newPassword2").addEventListener("keydown", (e) => { if (e.key === "Enter") updatePassword(); });
-
-    sb.auth.onAuthStateChange((event, session) => {
-      // Arriving via a reset link: let the user set a new password instead of
-      // dropping them straight into the app.
-      if (event === "PASSWORD_RECOVERY") {
-        setMode("recovery");
-        setAuthMsg("Choose a new password.");
-        return;
-      }
-      handleSession(session);
-    });
-    sb.auth.getSession().then(({ data }) => handleSession(data.session));
-  }
-
-  function bootstrap() {
-    init();      // build the app UI + wire its events (hidden until sign-in)
-    initAuth();  // wire the login screen and resolve the current session
-  }
-
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bootstrap);
-  else bootstrap();
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
 })();

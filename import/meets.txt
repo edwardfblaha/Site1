@@ -1,0 +1,10 @@
+# Harrier — TFRRS meet result URLs to import (one per line, # = comment)
+#
+# Paste the URL of each meet's RESULTS page from tfrrs.org. Find them by
+# browsing https://www.tfrrs.org/  →  a meet  →  its results page, then copy
+# the address bar. Cross country AND track 5k/10k meets both work.
+#
+# Examples (replace with real meet URLs):
+# https://www.tfrrs.org/results/xc/00000/Nuttycombe_Invitational
+# https://www.tfrrs.org/results/xc/00000/NCAA_Division_I_Cross_Country_Championships
+# https://www.tfrrs.org/results/00000/Payton_Jordan_Invitational
