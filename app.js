@@ -23,8 +23,8 @@
   };
   function scoreColor(score) {
     const t = Math.max(0, Math.min(1, (score - 45) / 50));
-    const hue = 210 - t * 210;
-    return `hsl(${hue}, 85%, 53%)`;
+    const hue = 25 + t * 120; // 25 amber (low) → 145 green (high)
+    return `hsl(${hue}, 45%, 46%)`;
   }
   const recById = (id) => E.recById[id];
 
@@ -59,7 +59,7 @@
     const dots = points.map((p) => `<circle cx="${X(p.order).toFixed(1)}" cy="${Y(p.val).toFixed(1)}" r="2.6" fill="${scoreColor(p.val)}"></circle>`).join("");
     return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
       <polyline points="${pts.join(" ")}" fill="none" stroke="url(#sg)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></polyline>
-      <defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7c5cff"/><stop offset="1" stop-color="#2f8fef"/></linearGradient></defs>
+      <defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7aa979"/><stop offset="1" stop-color="#2f6b46"/></linearGradient></defs>
       ${dots}</svg>`;
   }
 
@@ -72,13 +72,13 @@
     const Y = (y) => h - padB - ((y - minY) / Math.max(1, maxY - minY)) * (h - padB - padT);
     const line = points.map((p, i) => `${X(i).toFixed(1)},${Y(p.val).toFixed(1)}`).join(" ");
     const dots = points.map((p, i) =>
-      `<g><circle cx="${X(i).toFixed(1)}" cy="${Y(p.val).toFixed(1)}" r="5" fill="${scoreColor(p.val)}" stroke="#0b0e17" stroke-width="2"></circle>
+      `<g><circle cx="${X(i).toFixed(1)}" cy="${Y(p.val).toFixed(1)}" r="5" fill="${scoreColor(p.val)}" stroke="#ffffff" stroke-width="2"></circle>
        <title>${esc(p.race.meet)} — ${ordinal(p.place)} of ${p.field}</title></g>`).join("");
     const xlabels = points.map((p, i) =>
       `<text x="${X(i).toFixed(1)}" y="${h - padB + 16}" class="ax" text-anchor="middle">${esc(shortMeet(p.race.meet))}</text>`).join("");
     return `<svg class="chart" viewBox="0 0 ${w} ${h}">
       <polyline points="${line}" fill="none" stroke="url(#cg)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
-      <defs><linearGradient id="cg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7c5cff"/><stop offset="1" stop-color="#2f8fef"/></linearGradient></defs>
+      <defs><linearGradient id="cg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7aa979"/><stop offset="1" stop-color="#2f6b46"/></linearGradient></defs>
       ${dots}${xlabels}</svg>`;
   }
   function shortMeet(m) {
@@ -93,19 +93,19 @@
 
     return `
     <section class="hero">
-      <h1>National cross country rankings, settled on the course.</h1>
-      <p class="lede">Every ranking on Harrier comes from <strong>head-to-head results</strong> — who beat
-      whom across track 5k/10k and every XC race. No guesswork, no fake-slow 5k conversions.</p>
+      <h1>NCAA Division I distance rankings</h1>
+      <p class="lede">Rankings come from <strong>head-to-head results</strong> — who finished ahead of
+      whom — across track 5,000m / 10,000m and cross country.</p>
       <div class="hero-cta">
         <a class="btn btn-primary" href="#/rankings/M">View rankings</a>
-        <a class="btn" href="#/methodology">How head-to-head ranking works</a>
+        <a class="btn" href="#/methodology">How the ranking works</a>
       </div>
-      <p class="notice">Preview running on placeholder data. Live DI men's rankings will be built
-      strictly from 2026 track-season 5k/10k results imported from TFRRS — see Methodology.</p>
+      <p class="notice">Preliminary 2026 men's rankings, built from the season's 5,000m performance
+      lists. The 10,000m and cross country races fold in as they are added.</p>
     </section>
     <div class="home-grid">
       ${leaderCard("Men · Top 5", men)}
-      ${leaderCard("Women · Top 5", women)}
+      ${women.length ? leaderCard("Women · Top 5", women) : ""}
       <div class="card">
         <div class="card-head"><h3>Undefeated</h3><span class="muted">most wins, no losses</span></div>
         <ol class="mini-list">
@@ -138,7 +138,7 @@
     return `
     <div class="page-head">
       <div><h2>National rankings</h2>
-        <p class="muted">${list.length} ranked · ${genderLabel(gender)} · head-to-head · 2025</p></div>
+        <p class="muted">${list.length} ranked · ${genderLabel(gender)} · head-to-head · 2026</p></div>
       ${genderToggle("rankings", gender)}
     </div>
     <div class="table-wrap">
@@ -359,7 +359,7 @@
     return `
     <a class="back" href="#/races">← races</a>
     <section class="profile-head">
-      <div class="ph-id"><div class="avatar" style="--c:#7c5cff">${esc((r.courseName || "XC").slice(0, 2).toUpperCase())}</div>
+      <div class="ph-id"><div class="avatar" style="--c:#2f6b46">${esc((r.courseName || "XC").slice(0, 2).toUpperCase())}</div>
         <div><h1>${esc(r.meet)} <span class="pill ${r.gender === "M" ? "pm" : "pf"}">${genderLabel(r.gender)}</span></h1>
           <p class="muted">${esc(r.courseName)} · ${esc(r.place)} · ${esc(r.date)} · ${typePill(r).replace(/<[^>]+>/g, "")}</p></div></div>
     </section>
@@ -380,7 +380,7 @@
   function viewMethodology() {
     return `
     <div class="page-head"><div><h2>Methodology</h2>
-      <p class="muted">Rankings you can argue with your teammates about — because they're based on results.</p></div></div>
+      <p class="muted">How Harrier builds its rankings.</p></div></div>
     <div class="prose card">
       <h3>1 · Rankings come from head-to-head results, not converted times</h3>
       <p>Most rankings convert every cross country race into a "5k equivalent" and sort the times.
@@ -414,15 +414,12 @@
       figure across seven — because the 6th and 7th runners decide championships.</p>
 
       <h3>Where the data comes from</h3>
-      <p>Harrier ingests results from <strong>TFRRS</strong> (tfrrs.org), the official NCAA results
-      database, <em>automatically</em> — you don't paste meets one by one. The importer reads the DI
-      performance lists for the events we rank (starting with <strong>2026 men's 5000m and 10000m</strong>)
-      and follows the linked meets to recover the full head-to-head finishing order.</p>
-      <p>The <strong>preliminary men's rankings</strong> are built strictly from the 2026 track-season
-      5k/10k results and the head-to-head records within them; cross country races are added as they
-      happen.</p>
-      <p class="muted">This preview runs on placeholder data so every page is explorable. The head-to-head
-      method shown is exactly what runs once the 2026 TFRRS results are imported.</p>
+      <p>Results come from <strong>TFRRS</strong> (tfrrs.org), the official NCAA results database. The
+      current build is seeded from the <strong>2026 Division I men's 5,000m performance list</strong>:
+      for each meet we order the listed performances to recover the head-to-head finishing order.</p>
+      <p>These are <strong>preliminary men's rankings</strong>. Because they are built from one event so
+      far, an athlete's strength is judged against everyone he shared a meet with. The 10,000m and cross
+      country races fold in as they are added, tightening the national picture.</p>
     </div>`;
   }
 
