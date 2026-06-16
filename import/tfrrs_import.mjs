@@ -47,14 +47,31 @@ const CONFIG = {
   division: "DI",
   gender: "M",
   season: "2026",
-  // TFRRS performance-list URLs for the events to seed from. Replace the list
-  // IDs with the current DI men 5000m / 10000m outdoor (or indoor 5000m) lists
-  // from tfrrs.org/lists. Leaving the {SEASON} token lets you swap years fast.
-  listUrls: [
-    // e.g. "https://www.tfrrs.org/lists/<id>/<name>?gender=m&event_type=5000",
-    // e.g. "https://www.tfrrs.org/lists/<id>/<name>?gender=m&event_type=10000",
+  // Direct meet result pages to import. We parse each for its 5000m / 10000m
+  // tables (and follow event sub-pages if the meet splits events out). These
+  // are the 2026 conference + NCAA-qualifying meets that seed the preliminary
+  // DI men's rankings from real head-to-head 5k/10k results.
+  meetUrls: [
+    "https://www.tfrrs.org/results/96875/NCAA_Division_I_Outdoor_Track__Field_Championships",
+    "https://www.tfrrs.org/results/96717/NCAA_Division_I_West_First_Rounds",
+    "https://www.tfrrs.org/results/96716/NCAA_Division_I_East_First_Rounds",
+    "https://www.tfrrs.org/results/96168/2026_CAA_Outdoor_Track__Field_Championship",
+    "https://www.tfrrs.org/results/94457/2026_Patriot_League_Outdoor_Track_and_Field_Championships_",
+    "https://www.tfrrs.org/results/96121/2026_Big_Ten_Outdoor_Track__Field_Championships",
+    "https://www.tfrrs.org/results/94673/Big_12_Outdoor_Track__Field_Championships",
+    "https://www.tfrrs.org/results/96485/2026_BIG_EAST_Outdoor_Track__Field_Championships",
+    "https://www.tfrrs.org/results/96715/2026_Conference_USA_Outdoor_Track__Field_Championships",
+    "https://www.tfrrs.org/results/96148/SEC_Outdoor_TF_Championships_2026",
+    "https://www.tfrrs.org/results/96788/Big_Sky_Outdoor_Track__Field_Championships",
+    "https://www.tfrrs.org/results/96410/The_2026_American_Outdoor_Track__Field_Championships",
+    "https://www.tfrrs.org/results/93684/2026_MEAC_Outdoor_Track__Field_Championships",
+    "https://www.tfrrs.org/results/95975/2026_ACC_Outdoor_Track__Field_Championships",
   ],
-  topNPerList: 300, // cap athletes pulled per list
+  // (Optional) TFRRS performance-list URLs to also seed from.
+  listUrls: [],
+  // Only keep these events; everything else on a meet page is ignored.
+  keepDistancesM: [5000, 10000],
+  genderFilter: "M", // strictly Division I men for the preliminary build
 };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -165,7 +182,16 @@ async function run(meetUrls) {
   const racesAll = [];
   for (const url of meetUrls) {
     let html; try { html = await fetchCached(url); } catch (e) { console.warn("  ! skip", url, e.message); continue; }
-    parseMeet(html, url).forEach((r) => racesAll.push(r));
+    parseMeet(html, url).forEach((r) => {
+      if (CONFIG.keepDistancesM && !CONFIG.keepDistancesM.includes(r.meta.distanceM)) return;
+      if (CONFIG.genderFilter && r.gender !== CONFIG.genderFilter) return;
+      racesAll.push(r);
+    });
+  }
+  if (!racesAll.length) {
+    console.error("\n✗ No matching races parsed. Most likely cause: this host can't reach tfrrs.org");
+    console.error("  (look for 'Host not in allowlist' above), or the page layout changed.");
+    process.exit(2);
   }
   const { TEAMS, ATHLETES, RACES, RESULTS } = emit(racesAll);
   const out = `/* Harrier — generated from TFRRS by import/tfrrs_import.mjs. Do not edit by hand. */
@@ -199,19 +225,13 @@ async function main() {
     console.log(`· discovered ${meets.size} meets`);
     return run([...meets]);
   }
-  // LIST MODE
-  if (!CONFIG.listUrls.length) {
-    console.error(`No list URLs configured. Edit CONFIG.listUrls in ${path.relative(process.cwd(), new URL(import.meta.url).pathname)}`);
-    console.error(`Add the TFRRS DI men 5000m and 10000m ${CONFIG.season} performance-list URLs (from tfrrs.org/lists),`);
-    console.error(`or use crawl mode:  node import/tfrrs_import.mjs --crawl <tfrrs index/team url>`);
-    process.exit(1);
-  }
-  const meets = new Set();
+  // DEFAULT: import the configured meet pages directly, plus any list URLs.
+  const meets = new Set(CONFIG.meetUrls);
   for (const listUrl of CONFIG.listUrls) {
     try { discoverMeetLinks(await fetchCached(listUrl), listUrl).forEach((u) => meets.add(u)); }
     catch (e) { console.warn("  ! list failed", listUrl, e.message); }
   }
-  console.log(`· discovered ${meets.size} meets from ${CONFIG.listUrls.length} list(s)`);
+  console.log(`· importing ${meets.size} meets (events: ${CONFIG.keepDistancesM.join("/")}m, gender: ${CONFIG.genderFilter})`);
   return run([...meets]);
 }
 
