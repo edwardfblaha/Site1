@@ -83,6 +83,62 @@ window.MEETS = [
   },
 
   {
+    id: "wake-forest-invite-2026",
+    name: "Wake Forest Invitational",
+    date: "2026-04-17", place: "Winston-Salem, NC", tier: "",
+    // Non-DI finishers (unattached, pro, NAIA, DII) are omitted per DI-only
+    // scope; remaining DI athletes keep their true relative finishing order.
+    events: [
+      {
+        gender: "M", type: "TRACK", distanceM: 5000,
+        results: [
+          "Matias Reynaga|SR|Georgia|13:32.16",
+          "Aurelien Radja|FR|Wake Forest|13:38.78",
+          "Nickson Kogei|SO|Cincinnati|13:40.07",
+          "Charlie Ortmans|JR|Harvard|13:40.46",
+          "Oliver Smart|SR|Georgia|13:45.46",
+          "Ryan Olree|JR|Georgia|13:47.77",
+          "Bryce Gilmore|JR|Wake Forest|13:48.82",
+          "Luke Venhuizen|SR|Michigan|13:48.99",
+          "Riley Hough|JR|Michigan State|13:49.35",
+          "Miguel Baidal|SR|Eastern Kentucky|13:50.10",
+          "David Slapak|JR|Butler|13:50.28",
+          "Matthew Forrester|SR|Butler|13:50.75",
+          "Nelson Pariken|FR|Alabama|13:51.93",
+          "Sam Burgess|JR|Harvard|13:58.02",
+          "Conner Rutherford|JR|Georgia|14:00.89",
+          "Brian Kimutai|FR|Eastern Kentucky|14:20.55",
+          "Nolan Clark|JR|Michigan|14:34.06",
+          "Mohammed Jouhari|SR|Eastern Kentucky|DNF",
+          "Will Aitken|SR|Georgia|DNF",
+        ],
+      },
+      {
+        gender: "M", type: "TRACK", distanceM: 10000,
+        results: [
+          "Kelvin Cheruiyot|FR|Florida|28:25.28",
+          "Nickson Chebii|SO|Auburn|28:39.16",
+          "Geofrey Ronoh|JR|Florida|29:40.17",
+          "Martin Iriondo|SO|Charleston Southern|29:46.06",
+          "Jonathan Leon|FR|Florida|29:54.64",
+          "Micah Gilpatric|SR|Charleston Southern|30:07.20",
+          "Aaron Kidd|FR|App State|30:07.96",
+          "Adam Patel|FR|Illinois|30:09.48",
+          "Jason Polydoris|SR|Purdue|30:10.13",
+          "Ryan Slaney|SR|Northeastern|30:14.04",
+          "Dylan Nolan|SO|Clemson|31:27.51",
+          "Brendan Gomez|SO|Clemson|DNF",
+          "Mario Priego|SR|Eastern Kentucky|DNF",
+          "Charles Namiot|SR|Miami (Ohio)|DNF",
+          "Nerius White|JR|Purdue|DNF",
+          "Liam Tilton|SR|Rutgers|DNF",
+          "Henry Gartner|JR|Stony Brook|DNF",
+        ],
+      },
+    ],
+  },
+
+  {
     id: "ncaa-east-first-round-2026",
     name: "NCAA Division I East First Round",
     date: "2026-05-30", place: "", tier: "regional",
