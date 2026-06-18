@@ -65,8 +65,7 @@
 
   function profileChart(points) {
     if (points.length < 2) return `<div class="muted">Not enough races to chart yet.</div>`;
-    // Taller bottom padding holds rotated date labels so they never overlap.
-    const w = 640, h = 250, padL = 30, padB = 64, padT = 14, padR = 16;
+    const w = 640, h = 232, padL = 30, padB = 40, padT = 14, padR = 16;
     const ys = points.map((p) => p.val);
     const minY = Math.floor(Math.min(...ys) - 4), maxY = Math.ceil(Math.max(...ys) + 4);
     const X = (i) => padL + (i / Math.max(1, points.length - 1)) * (w - padL - padR);
@@ -74,17 +73,24 @@
     const line = points.map((p, i) => `${X(i).toFixed(1)},${Y(p.val).toFixed(1)}`).join(" ");
     const dots = points.map((p, i) =>
       `<g><circle cx="${X(i).toFixed(1)}" cy="${Y(p.val).toFixed(1)}" r="5" fill="${scoreColor(p.val)}" stroke="#ffffff" stroke-width="2"></circle>
-       <title>${esc(p.race.meet)} — ${ordinal(p.place)} of ${p.field}</title></g>`).join("");
-    // Rotate labels ~35° and anchor at the end so adjacent meets don't collide,
-    // even with many races. Use a compact date as the primary label.
+       <title>${esc(p.race.meet)} (${mdShort(p.race.date)}) — ${ordinal(p.place)} of ${p.field}</title></g>`).join("");
+    // Horizontal compact dates (e.g. "5/30"). If there are enough races that
+    // labels would touch, show every other one so they stay legible.
+    const minGap = 46; // px needed per label
+    const step = Math.ceil((points.length * minGap) / (w - padL - padR));
     const xlabels = points.map((p, i) => {
-      const x = X(i).toFixed(1), y = (h - padB + 14).toFixed(1);
-      return `<text x="${x}" y="${y}" class="ax" text-anchor="end" transform="rotate(-35 ${x} ${y})">${esc(p.race.date.slice(5))}</text>`;
+      if (i % step !== 0 && i !== points.length - 1) return "";
+      return `<text x="${X(i).toFixed(1)}" y="${h - padB + 18}" class="ax" text-anchor="middle">${mdShort(p.race.date)}</text>`;
     }).join("");
     return `<svg class="chart" viewBox="0 0 ${w} ${h}">
       <polyline points="${line}" fill="none" stroke="url(#cg)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
       <defs><linearGradient id="cg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7aa979"/><stop offset="1" stop-color="#2f6b46"/></linearGradient></defs>
       ${dots}${xlabels}</svg>`;
+  }
+  // "2026-05-30" → "5/30"
+  function mdShort(d) {
+    const [, m, day] = d.split("-");
+    return `${parseInt(m, 10)}/${parseInt(day, 10)}`;
   }
   function shortMeet(m) {
     return m.replace("Championships", "Champs").replace("Invitational", "Inv.").replace("Invite", "Inv.").replace("Conference", "Conf.").replace("NCAA ", "");
