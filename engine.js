@@ -146,13 +146,20 @@
       rec.opponents = cnt;                       // total head-to-head meetings
     });
 
-    // National rank within gender by rating — only active athletes are ranked;
-    // inactive (not returning) athletes keep a rating but are listed separately.
-    const ranked = recs.filter((r) => r.active).sort((x, y) => y.raw - x.raw);
+    // National rank within gender by rating. Only rank athletes with actual
+    // head-to-head evidence: someone who never finished a race against anyone
+    // (e.g. DNF/DNS only) has no comparisons, so the regularizer parks them at
+    // the field mean — they must NOT sit above athletes with real records.
+    // Inactive (not returning) athletes are also excluded from the ranking.
+    const ranked = recs.filter((r) => r.active && r.opponents > 0).sort((x, y) => y.raw - x.raw);
     ranked.forEach((r, i) => {
       r.rank = i + 1;
       r.percentile = 100 * (1 - i / Math.max(1, ranked.length - 1));
       r.fieldSize = ranked.length;
+    });
+    // Unranked = active but no head-to-head evidence yet.
+    recs.filter((r) => r.active && r.opponents === 0).forEach((r) => {
+      r.rank = null; r.unranked = true; r.fieldSize = ranked.length;
     });
     recs.filter((r) => !r.active).forEach((r) => { r.rank = null; r.fieldSize = ranked.length; });
     recs.sort((x, y) => y.raw - x.raw);

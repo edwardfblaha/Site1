@@ -65,7 +65,8 @@
 
   function profileChart(points) {
     if (points.length < 2) return `<div class="muted">Not enough races to chart yet.</div>`;
-    const w = 640, h = 230, padL = 30, padB = 46, padT = 14, padR = 14;
+    // Taller bottom padding holds rotated date labels so they never overlap.
+    const w = 640, h = 250, padL = 30, padB = 64, padT = 14, padR = 16;
     const ys = points.map((p) => p.val);
     const minY = Math.floor(Math.min(...ys) - 4), maxY = Math.ceil(Math.max(...ys) + 4);
     const X = (i) => padL + (i / Math.max(1, points.length - 1)) * (w - padL - padR);
@@ -74,8 +75,12 @@
     const dots = points.map((p, i) =>
       `<g><circle cx="${X(i).toFixed(1)}" cy="${Y(p.val).toFixed(1)}" r="5" fill="${scoreColor(p.val)}" stroke="#ffffff" stroke-width="2"></circle>
        <title>${esc(p.race.meet)} — ${ordinal(p.place)} of ${p.field}</title></g>`).join("");
-    const xlabels = points.map((p, i) =>
-      `<text x="${X(i).toFixed(1)}" y="${h - padB + 16}" class="ax" text-anchor="middle">${esc(shortMeet(p.race.meet))}</text>`).join("");
+    // Rotate labels ~35° and anchor at the end so adjacent meets don't collide,
+    // even with many races. Use a compact date as the primary label.
+    const xlabels = points.map((p, i) => {
+      const x = X(i).toFixed(1), y = (h - padB + 14).toFixed(1);
+      return `<text x="${x}" y="${y}" class="ax" text-anchor="end" transform="rotate(-35 ${x} ${y})">${esc(p.race.date.slice(5))}</text>`;
+    }).join("");
     return `<svg class="chart" viewBox="0 0 ${w} ${h}">
       <polyline points="${line}" fill="none" stroke="url(#cg)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
       <defs><linearGradient id="cg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7aa979"/><stop offset="1" stop-color="#2f6b46"/></linearGradient></defs>
@@ -87,8 +92,8 @@
 
   // ---- views ----
   function viewHome() {
-    const men = E.byGender.M.recs.slice(0, 5);
-    const women = E.byGender.F.recs.slice(0, 5);
+    const men = E.byGender.M.ranked.slice(0, 5);
+    const women = E.byGender.F.ranked.slice(0, 5);
     const undef = E.allRecs.filter((r) => r.losses === 0 && r.wins > 4).sort((a, b) => b.wins - a.wins).slice(0, 5);
 
     return `
@@ -134,7 +139,7 @@
 
   function viewRankings(gender) {
     gender = gender === "F" ? "F" : "M";
-    const list = E.byGender[gender].recs;
+    const list = E.byGender[gender].ranked;
     return `
     <div class="page-head">
       <div><h2>National rankings</h2>
@@ -174,9 +179,12 @@
     const { bestWins, notableLosses } = E.notables(id);
     const teammates = E.byGender[a.gender].recs
       .filter((x) => x.team.id === r.team.id && x.athlete.id !== id).slice(0, 5);
-    const near = E.byGender[a.gender].recs
+    // "Ranked near you" only applies to ranked athletes; anchor at this
+    // athlete's rank, or the bottom of the list if they're not yet ranked.
+    const anchor = r.rank || E.byGender[a.gender].ranked.length;
+    const near = E.byGender[a.gender].ranked
       .filter((x) => x.athlete.id !== id)
-      .map((x) => ({ x, d: Math.abs(x.rank - r.rank) }))
+      .map((x) => ({ x, d: Math.abs(x.rank - anchor) }))
       .sort((p, q) => p.d - q.d).slice(0, 5).map((o) => o.x);
 
     return `
@@ -189,8 +197,8 @@
             · ${genderLabel(a.gender)} · ${esc(a.year)} · ${esc(r.team.conference)}</p></div>
       </div>
       <div class="ph-rating">
-        <div class="big-score" style="color:${scoreColor(r.score)}">#${r.rank}</div>
-        <div class="muted">national · ${genderLabel(a.gender)}</div></div>
+        <div class="big-score" style="color:${scoreColor(r.score)}">${r.rank ? "#" + r.rank : "NR"}</div>
+        <div class="muted">${r.rank ? "national · " + genderLabel(a.gender) : "not yet ranked"}</div></div>
     </section>
 
     <div class="stat-strip">
@@ -327,7 +335,7 @@
           <td class="rk">${i + 1}${i < 5 ? '<span class="s5" title="scoring five">•</span>' : ""}</td>
           <td><a href="#/athlete/${a.athlete.id}">${esc(a.athlete.name)}</a></td>
           <td class="muted">${esc(a.athlete.year)}</td>
-          <td class="num muted">#${a.rank}</td>
+          <td class="num muted">${a.rank ? "#" + a.rank : "—"}</td>
           <td class="num"><span class="score-pill" style="background:${scoreColor(a.score)}">${f1(a.score)}</span></td>
           <td class="num">${recordBadge(a)}</td>
           <td class="spark-cell">${sparkline(raceScores(a.athlete.id))}</td>
@@ -454,7 +462,7 @@
       aMatches.map((r) => `<a class="sr-item" href="#/athlete/${r.athlete.id}">
         <span class="sr-dot" style="background:${scoreColor(r.score)}"></span>
         <span>${esc(r.athlete.name)}</span>
-        <span class="muted">${esc(r.team.abbr)} · #${r.rank} ${genderLabel(r.athlete.gender)}</span>
+        <span class="muted">${esc(r.team.abbr)} · ${r.rank ? "#" + r.rank : "NR"} ${genderLabel(r.athlete.gender)}</span>
         <span class="score-pill sm" style="background:${scoreColor(r.score)}">${f1(r.score)}</span></a>`).join("") +
       tMatches.map((t) => `<a class="sr-item" href="#/team/${t.id}/M">
         <span class="sr-dot team"></span><span>${esc(t.name)}</span>
