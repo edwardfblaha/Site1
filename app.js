@@ -155,7 +155,7 @@
     <div class="table-wrap">
     <table class="rank-table">
       <thead><tr><th>#</th><th>Athlete</th><th>Team</th><th>Yr</th>
-        <th class="num">Rating</th><th class="num">Record</th><th class="num">Win%</th><th>Season</th></tr></thead>
+        <th class="num">Rating</th><th class="num">Best</th><th class="num">Record</th><th>Season</th></tr></thead>
       <tbody>
         ${list.map((r) => `<tr>
           <td class="rk">${r.rank}</td>
@@ -163,8 +163,8 @@
           <td><a class="muted" href="#/team/${r.team.id}/${gender}">${esc(r.team.abbr)}</a></td>
           <td class="muted">${esc(r.athlete.year)}</td>
           <td class="num"><span class="score-pill" style="background:${scoreColor(r.score)}">${f1(r.score)}</span></td>
+          <td class="num mono" style="color:${r.bestRace != null ? scoreColor(r.bestRace) : "inherit"}">${r.bestRace != null ? f1(r.bestRace) : "—"}</td>
           <td class="num">${recordBadge(r)}</td>
-          <td class="num mono">${pct(r.winPct)}</td>
           <td class="spark-cell">${sparkline(raceScores(r.athlete.id))}</td>
         </tr>`).join("")}
       </tbody>
@@ -209,11 +209,13 @@
 
     <div class="stat-strip">
       ${stat(`<span class="score-pill big" style="background:${scoreColor(r.score)}">${f1(r.score)}</span>`, "Harrier rating")}
+      ${stat(r.bestRace != null ? `<span style="color:${scoreColor(r.bestRace)}">${f1(r.bestRace)}</span>` : "—", "best race")}
       ${stat(`${r.wins}–${r.losses}`, "head-to-head record")}
-      ${stat(pct(r.winPct), "win rate")}
       ${stat(`<span style="color:${scoreColor(r.sos)}">${f1(r.sos)}</span>`, "strength of schedule")}
       ${stat(`${r.raceCount}`, "races")}
     </div>
+    ${r.prevSeason != null ? `<p class="muted prev-note">Rating includes last season's final rating
+      (${f1(r.prevSeason)}) weighted 25%.</p>` : ""}
 
     <div class="profile-grid">
       <div class="card">
@@ -431,15 +433,26 @@
       that. Each athlete also carries a strength-of-schedule figure — the average rating of every opponent
       actually faced — so this is visible, not just implicit.</p>
 
-      <h3>7 · Recency weighting</h3>
-      <p>More recent races receive higher weight, so the ratings track current form.</p>
+      <h3>7 · Season rating: best race counts most</h3>
+      <p>Each race an athlete runs is graded on its own — by the quality of the runners they beat and
+      lost to in it. Those per-race grades are combined into a season rating that rewards a high ceiling:
+      an athlete's <strong>single worst race is dropped</strong> (once they have at least three), and the
+      remaining races are weighted so the <strong>best race counts the most</strong>, the next-best less,
+      and so on. A genuinely higher absolute level — shown by one outstanding result against a strong
+      field — lifts the rating rather than being averaged away.</p>
 
-      <h3>8 · Rating scale</h3>
-      <p>Raw ratings are mapped to a 0–100 scale within each gender, anchored so the strongest athletes
-      sit near the top of the range and remain clearly separated. National rank is the order of the raw
-      ratings among active athletes.</p>
+      <h3>8 · Previous season</h3>
+      <p>Once an athlete has a completed prior season, that season's final rating is blended in at
+      <strong>25%</strong>, with the current season at 75%. This steadies early-season rankings and fades
+      in importance as new results accumulate.</p>
 
-      <h3>9 · Teams</h3>
+      <h3>9 · Rating scale</h3>
+      <p>Ratings are mapped to a 0–100 scale within each gender, anchored so the strongest athletes sit
+      near the top of the range and remain clearly separated. Each profile also shows the athlete's
+      <strong>best race</strong> — their season ceiling. National rank is the order of season ratings
+      among active athletes with at least one head-to-head result.</p>
+
+      <h3>10 · Teams</h3>
       <p>A team's rating is the mean rating of its top five athletes, with a separate figure across the
       top seven for depth.</p>
     </div>`;

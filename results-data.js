@@ -727,3 +727,11 @@ window.INACTIVE = [
 window.ROSTERS = {
   // "Oklahoma State": ["Brian Musau", "Denis Kipngetich", "Adisu Guadia", ...],
 };
+
+/* Previous completed season's FINAL ratings, used as a 25% prior on this
+ * season's rating once available. Keyed by athlete id (the builder makes ids
+ * as "a-" + lowercased-hyphenated name, e.g. "a-habtom-samuel"). Leave empty
+ * until a prior season has been computed; then paste { athleteId: score }.
+ *   window.PREV_SEASON = { scores: { "a-habtom-samuel": 97.2, ... } };
+ */
+window.PREV_SEASON = { scores: {} };

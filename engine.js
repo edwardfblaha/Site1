@@ -19,6 +19,11 @@
 (function () {
   "use strict";
   const D = window.DATA;
+  // Previous completed season's final ratings, by athlete id → 0–100 score.
+  // Populated from window.PREV_SEASON when a prior season has been loaded.
+  // When present it contributes 25% to an athlete's current season rating.
+  const PREV = (window.PREV_SEASON && window.PREV_SEASON.scores) || {};
+  const PREV_WEIGHT = 0.25;
 
   function recencyWeight(order, maxOrder) {
     return 1 + (order / Math.max(1, maxOrder)) * 1.2; // 1.0 → 2.2 across season
@@ -110,17 +115,74 @@
     const span = (hi - lo) || 1;
     const scoreOf = (r) => Math.max(1, Math.min(100, 40 + ((r - lo) / span) * 59));
 
+    // ---- Per-race performance scores ----
+    // The global Massey rating above values every opponent. We now grade each
+    // individual RACE an athlete ran by who they beat and lost to in it, then
+    // aggregate those per-race grades into a season score that (a) drops the
+    // athlete's single worst race and (b) weights their best race the most, so
+    // a genuinely higher absolute ceiling shows through.
+    const globalScoreByIdx = (j) => scoreOf(rating[j]);
+    function racePerformance(athleteId, raceId) {
+      const rows = D.RESULTS.filter((x) => x.raceId === raceId)
+        .filter((x) => idx[x.athleteId] !== undefined)
+        .sort((p, q) => p.seconds - q.seconds);
+      const myPlace = rows.findIndex((x) => x.athleteId === athleteId);
+      if (myPlace < 0 || rows.length < 2) return null;
+      // Performance = how you placed within the field, scaled by the field's
+      // strength. Beating strong runners near the front scores high; the same
+      // place in a weak race scores lower. Maps to the same 0–100 space.
+      const beatBelow = rows.slice(myPlace + 1).map((x) => globalScoreByIdx(idx[x.athleteId]));
+      const lostAbove = rows.slice(0, myPlace).map((x) => globalScoreByIdx(idx[x.athleteId]));
+      const fieldScores = rows.map((x) => globalScoreByIdx(idx[x.athleteId]));
+      const fieldMax = Math.max(...fieldScores);
+      const fieldMean = fieldScores.reduce((s, v) => s + v, 0) / fieldScores.length;
+      // Anchor near the strongest you beat, lifted toward the field's ceiling.
+      const beatTop = beatBelow.length ? Math.max(...beatBelow) : fieldMean - 6;
+      const lostMin = lostAbove.length ? Math.min(...lostAbove) : fieldMax + 2;
+      // Sit between the best runner you beat and the worst who beat you, with a
+      // bonus for racing (and surviving) a strong field overall.
+      const between = (beatTop + lostMin) / 2;
+      return Math.max(1, Math.min(100, 0.7 * between + 0.3 * fieldMax));
+    }
+
+    // Aggregate per-race performances into a season score:
+    //  - drop the single worst race (when the athlete has ≥3),
+    //  - weight the remaining races geometrically (best ×1, next ×0.6, …) so
+    //    the best race dominates and a higher true ceiling is rewarded.
+    function seasonScore(athleteId) {
+      const raceIds = [...new Set(D.RESULTS.filter((x) => x.athleteId === athleteId).map((x) => x.raceId))];
+      let perfs = raceIds.map((rid) => racePerformance(athleteId, rid)).filter((v) => v != null);
+      if (!perfs.length) return null;
+      perfs.sort((a, b) => b - a); // best first
+      if (perfs.length >= 3) perfs = perfs.slice(0, perfs.length - 1); // drop worst
+      const DECAY = 0.6; // best race weighted most
+      let num = 0, den = 0, wt = 1;
+      for (const p of perfs) { num += p * wt; den += wt; wt *= DECAY; }
+      return num / den;
+    }
+
     // Assemble per-athlete records.
     const recs = athletes.map((a) => {
       const wins = W[idx[a.id]], losses = L[idx[a.id]];
       const raw = rating[idx[a.id]];
-      const myRaces = D.RESULTS.filter((x) => x.athleteId === a.id).length;
+      const races = [...new Set(D.RESULTS.filter((x) => x.athleteId === a.id).map((x) => x.raceId))];
+      const seasonRaw = seasonScore(a.id);
+      // Best single race = the athlete's ceiling, shown on the profile.
+      const perfList = races.map((rid) => racePerformance(a.id, rid)).filter((v) => v != null);
+      const bestRace = perfList.length ? Math.max(...perfList) : null;
+      // Blend in last completed season at 25% when available.
+      const prev = PREV[a.id];
+      const season = seasonRaw == null ? scoreOf(raw) : seasonRaw;
+      const score = prev != null ? (1 - PREV_WEIGHT) * season + PREV_WEIGHT * prev : season;
       return {
         athlete: a, team: D.teamById[a.teamId],
-        raw, score: scoreOf(raw),
+        raw, score,
+        seasonScore: seasonRaw,
+        bestRace,
+        prevSeason: prev != null ? prev : null,
         wins: Math.round(wins), losses: Math.round(losses),
         winPct: wins + losses > 0 ? wins / (wins + losses) : 0,
-        raceCount: myRaces,
+        raceCount: races.length,
         active: a.active !== false,
         _idx: idx[a.id],
       };
@@ -151,7 +213,7 @@
     // (e.g. DNF/DNS only) has no comparisons, so the regularizer parks them at
     // the field mean — they must NOT sit above athletes with real records.
     // Inactive (not returning) athletes are also excluded from the ranking.
-    const ranked = recs.filter((r) => r.active && r.opponents > 0).sort((x, y) => y.raw - x.raw);
+    const ranked = recs.filter((r) => r.active && r.opponents > 0).sort((x, y) => y.score - x.score);
     ranked.forEach((r, i) => {
       r.rank = i + 1;
       r.percentile = 100 * (1 - i / Math.max(1, ranked.length - 1));
@@ -162,7 +224,7 @@
       r.rank = null; r.unranked = true; r.fieldSize = ranked.length;
     });
     recs.filter((r) => !r.active).forEach((r) => { r.rank = null; r.fieldSize = ranked.length; });
-    recs.sort((x, y) => y.raw - x.raw);
+    recs.sort((x, y) => y.score - x.score);
 
     return { athletes, recs, ranked,
       recById: Object.fromEntries(recs.map((r) => [r.athlete.id, r])),
@@ -282,8 +344,8 @@
     ["M", "F"].forEach((g) => {
       D.TEAMS.forEach((t) => {
         const roster = byGender[g].recs
-          .filter((r) => r.team.id === t.id && r.active)
-          .sort((a, b) => b.raw - a.raw);
+          .filter((r) => r.team.id === t.id && r.active && r.opponents > 0)
+          .sort((a, b) => b.score - a.score);
         if (roster.length < 5) return;
         const top5 = roster.slice(0, 5);
         const rating = top5.reduce((s, r) => s + r.score, 0) / 5;
