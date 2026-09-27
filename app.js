@@ -101,20 +101,21 @@
     const men = E.byGender.M.ranked.slice(0, 5);
     const women = E.byGender.F.ranked.slice(0, 5);
     const undef = E.allRecs.filter((r) => r.losses === 0 && r.wins > 4).sort((a, b) => b.wins - a.wins).slice(0, 5);
+    const empty = E.byGender.M.ranked.length === 0 && E.byGender.F.ranked.length === 0;
 
     return `
     <section class="hero">
-      <h1>NCAA Division I distance rankings</h1>
+      <h1>NCAA Division I cross country rankings</h1>
       <p class="lede">Rankings come from <strong>head-to-head results</strong> — who finished ahead of
-      whom — across track 5,000m / 10,000m and cross country.</p>
+      whom — across the 2026 cross country season.</p>
       <div class="hero-cta">
         <a class="btn btn-primary" href="#/rankings/M">View rankings</a>
         <a class="btn" href="#/methodology">How the rating works</a>
       </div>
-      <p class="notice">Preliminary 2026 men's rankings, built from outdoor track 5,000m and 10,000m
-      results. Cross country races fold in as they are added.</p>
+      ${empty ? `<p class="notice">No results loaded yet. The 2026 cross country rankings will build
+        here as meets are added.</p>` : ""}
     </section>
-    <div class="home-grid">
+    ${empty ? "" : `<div class="home-grid">
       ${leaderCard("Men · Top 5", men)}
       ${women.length ? leaderCard("Women · Top 5", women) : ""}
       <div class="card">
@@ -126,7 +127,7 @@
             ${recordBadge(r)}</li>`).join("") : `<li class="muted">No unbeaten athletes yet.</li>`}
         </ol>
       </div>
-    </div>`;
+    </div>`}`;
   }
 
   function leaderCard(title, list) {
@@ -146,6 +147,16 @@
   function viewRankings(gender) {
     gender = gender === "F" ? "F" : "M";
     const list = E.byGender[gender].ranked;
+    if (!list.length) {
+      return `
+      <div class="page-head">
+        <div><h2>National rankings</h2><p class="muted">${genderLabel(gender)} · 2026 cross country</p></div>
+        ${genderToggle("rankings", gender)}
+      </div>
+      <div class="empty"><h2>No results yet</h2>
+        <p class="muted">Rankings will appear once ${genderLabel(gender).toLowerCase()}'s cross country
+        results are added.</p></div>`;
+    }
     return `
     <div class="page-head">
       <div><h2>National rankings</h2>
@@ -243,7 +254,7 @@
     </div>
 
     <div class="card">
-      <div class="card-head"><h3>Race log</h3><span class="muted">cross country + track 5k/10k</span></div>
+      <div class="card-head"><h3>Race log</h3><span class="muted">every race scored</span></div>
       <div class="table-wrap">
       <table class="rank-table">
         <thead><tr><th>Date</th><th>Meet</th><th>Type</th><th class="num">Time</th><th class="num">Place</th><th class="num">Beat</th></tr></thead>
@@ -354,7 +365,7 @@
   function viewRaces() {
     const byDate = [...D.RACES].sort((a, b) => b.date.localeCompare(a.date) || a.gender.localeCompare(b.gender));
     return `
-    <div class="page-head"><div><h2>Races</h2><p class="muted">${D.RACES.length} races · XC + track 5k/10k</p></div></div>
+    <div class="page-head"><div><h2>Races</h2><p class="muted">${D.RACES.length} races · 2026 cross country</p></div></div>
     <div class="race-list">
       ${byDate.map((r) => {
         const n = D.RESULTS.filter((p) => p.raceId === r.id).length;
