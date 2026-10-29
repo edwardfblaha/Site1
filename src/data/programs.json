@@ -1,16 +1,16 @@
 {
   "conferences": {
     "GLC": "Great Lakes Conference",
-    "ATL": "Atlantic League",
-    "SOA": "Southern Alliance",
-    "HLC": "Heartland Conference",
-    "MWL": "Mountain West League",
-    "PCC": "Pacific Coast Conference",
-    "EMP": "Empire League",
-    "GLF": "Gulf Conference",
-    "FRO": "Frontier Conference",
-    "MET": "Metro League",
-    "COL": "Colonial Conference"
+    "DSC": "Deep South Conference",
+    "ESC": "Eastern Seaboard Conference",
+    "GPC": "Great Plains Conference",
+    "RMC": "Rocky Mountain Conference",
+    "PAC": "Pacific Conference",
+    "MET": "Metropolitan Conference",
+    "HER": "Heritage League",
+    "TID": "Tidewater Conference",
+    "MIN": "Minuteman Conference",
+    "MID": "Midland Conference"
   },
   "regions": [
     "northeast",
@@ -29,7 +29,7 @@
       "name": "Oregon",
       "colorPrimary": "#154733",
       "region": "pacific",
-      "conference": "PCC",
+      "conference": "PAC",
       "prestige": 97,
       "isTop50": true
     },
@@ -38,7 +38,7 @@
       "name": "Colorado",
       "colorPrimary": "#111111",
       "region": "mountain",
-      "conference": "MWL",
+      "conference": "RMC",
       "prestige": 96,
       "isTop50": true
     },
@@ -47,7 +47,7 @@
       "name": "Stillwater",
       "colorPrimary": "#ff7300",
       "region": "southcentral",
-      "conference": "FRO",
+      "conference": "GPC",
       "prestige": 96,
       "isTop50": true
     },
@@ -56,7 +56,7 @@
       "name": "Flagstaff",
       "colorPrimary": "#003466",
       "region": "mountain",
-      "conference": "MWL",
+      "conference": "RMC",
       "prestige": 96,
       "isTop50": true
     },
@@ -65,7 +65,7 @@
       "name": "Provo",
       "colorPrimary": "#0033a0",
       "region": "mountain",
-      "conference": "MWL",
+      "conference": "RMC",
       "prestige": 95,
       "isTop50": true
     },
@@ -74,7 +74,7 @@
       "name": "Arkansas",
       "colorPrimary": "#9d2235",
       "region": "southcentral",
-      "conference": "SOA",
+      "conference": "DSC",
       "prestige": 93,
       "isTop50": true
     },
@@ -92,7 +92,7 @@
       "name": "Palo Alto",
       "colorPrimary": "#8c1515",
       "region": "pacific",
-      "conference": "PCC",
+      "conference": "PAC",
       "prestige": 92,
       "isTop50": true
     },
@@ -101,7 +101,7 @@
       "name": "Washington",
       "colorPrimary": "#4b2e83",
       "region": "pacific",
-      "conference": "PCC",
+      "conference": "PAC",
       "prestige": 92,
       "isTop50": true
     },
@@ -110,7 +110,7 @@
       "name": "Upstate Uni",
       "colorPrimary": "#f76900",
       "region": "northeast",
-      "conference": "EMP",
+      "conference": "ESC",
       "prestige": 92,
       "isTop50": true
     },
@@ -119,7 +119,7 @@
       "name": "Virginia",
       "colorPrimary": "#232d4b",
       "region": "midatlantic",
-      "conference": "ATL",
+      "conference": "ESC",
       "prestige": 91,
       "isTop50": true
     },
@@ -137,7 +137,7 @@
       "name": "South Bend",
       "colorPrimary": "#0c2340",
       "region": "greatlakes",
-      "conference": "GLC",
+      "conference": "ESC",
       "prestige": 90,
       "isTop50": true
     },
@@ -155,7 +155,7 @@
       "name": "Ames",
       "colorPrimary": "#c8102e",
       "region": "heartland",
-      "conference": "HLC",
+      "conference": "GPC",
       "prestige": 90,
       "isTop50": true
     },
@@ -164,7 +164,7 @@
       "name": "North Carolina",
       "colorPrimary": "#7bafd4",
       "region": "southeast",
-      "conference": "ATL",
+      "conference": "ESC",
       "prestige": 88,
       "isTop50": true
     },
@@ -173,7 +173,7 @@
       "name": "Winston-Salem",
       "colorPrimary": "#9e7e38",
       "region": "southeast",
-      "conference": "ATL",
+      "conference": "ESC",
       "prestige": 87,
       "isTop50": true
     },
@@ -182,7 +182,7 @@
       "name": "Portland",
       "colorPrimary": "#4b306a",
       "region": "pacific",
-      "conference": "PCC",
+      "conference": "PAC",
       "prestige": 87,
       "isTop50": true
     },
@@ -191,7 +191,7 @@
       "name": "Alabama",
       "colorPrimary": "#9e1b32",
       "region": "southeast",
-      "conference": "GLF",
+      "conference": "DSC",
       "prestige": 86,
       "isTop50": true
     },
@@ -200,7 +200,7 @@
       "name": "Main Line",
       "colorPrimary": "#13294b",
       "region": "midatlantic",
-      "conference": "COL",
+      "conference": "MET",
       "prestige": 86,
       "isTop50": true
     },
@@ -209,7 +209,7 @@
       "name": "Potomac",
       "colorPrimary": "#041e42",
       "region": "midatlantic",
-      "conference": "COL",
+      "conference": "MET",
       "prestige": 85,
       "isTop50": true
     },
@@ -218,7 +218,7 @@
       "name": "Pullman",
       "colorPrimary": "#981e32",
       "region": "pacific",
-      "conference": "PCC",
+      "conference": "PAC",
       "prestige": 85,
       "isTop50": true
     },
@@ -227,7 +227,7 @@
       "name": "Texas",
       "colorPrimary": "#bf5700",
       "region": "southcentral",
-      "conference": "FRO",
+      "conference": "DSC",
       "prestige": 84,
       "isTop50": true
     },
@@ -236,7 +236,7 @@
       "name": "Florida",
       "colorPrimary": "#0021a5",
       "region": "southeast",
-      "conference": "GLF",
+      "conference": "DSC",
       "prestige": 84,
       "isTop50": true
     },
@@ -245,7 +245,7 @@
       "name": "Tennessee",
       "colorPrimary": "#ff8200",
       "region": "southeast",
-      "conference": "SOA",
+      "conference": "DSC",
       "prestige": 84,
       "isTop50": true
     },
@@ -254,7 +254,7 @@
       "name": "Derby City",
       "colorPrimary": "#ad0000",
       "region": "southeast",
-      "conference": "ATL",
+      "conference": "ESC",
       "prestige": 84,
       "isTop50": true
     },
@@ -263,7 +263,7 @@
       "name": "Minnesota",
       "colorPrimary": "#7a0019",
       "region": "heartland",
-      "conference": "HLC",
+      "conference": "GLC",
       "prestige": 83,
       "isTop50": true
     },
@@ -272,7 +272,7 @@
       "name": "Boise",
       "colorPrimary": "#0033a0",
       "region": "mountain",
-      "conference": "FRO",
+      "conference": "RMC",
       "prestige": 82,
       "isTop50": true
     },
@@ -281,7 +281,7 @@
       "name": "Ithaca",
       "colorPrimary": "#b31b1b",
       "region": "northeast",
-      "conference": "EMP",
+      "conference": "HER",
       "prestige": 82,
       "isTop50": true
     },
@@ -290,7 +290,7 @@
       "name": "Nassau",
       "colorPrimary": "#ff671f",
       "region": "northeast",
-      "conference": "COL",
+      "conference": "HER",
       "prestige": 82,
       "isTop50": true
     },
@@ -308,7 +308,7 @@
       "name": "Corvallis",
       "colorPrimary": "#dc4405",
       "region": "pacific",
-      "conference": "PCC",
+      "conference": "PAC",
       "prestige": 82,
       "isTop50": true
     },
@@ -326,7 +326,7 @@
       "name": "Kansas",
       "colorPrimary": "#0051ba",
       "region": "heartland",
-      "conference": "HLC",
+      "conference": "GPC",
       "prestige": 81,
       "isTop50": true
     },
@@ -335,7 +335,7 @@
       "name": "Iowa City",
       "colorPrimary": "#000000",
       "region": "heartland",
-      "conference": "HLC",
+      "conference": "GLC",
       "prestige": 81,
       "isTop50": true
     },
@@ -344,7 +344,7 @@
       "name": "Raleigh",
       "colorPrimary": "#cc0000",
       "region": "southeast",
-      "conference": "ATL",
+      "conference": "ESC",
       "prestige": 81,
       "isTop50": true
     },
@@ -353,7 +353,7 @@
       "name": "Cambridge",
       "colorPrimary": "#a51c30",
       "region": "northeast",
-      "conference": "COL",
+      "conference": "HER",
       "prestige": 80,
       "isTop50": true
     },
@@ -371,7 +371,7 @@
       "name": "Utah",
       "colorPrimary": "#cc0000",
       "region": "mountain",
-      "conference": "MWL",
+      "conference": "GPC",
       "prestige": 80,
       "isTop50": true
     },
@@ -380,7 +380,7 @@
       "name": "Georgia",
       "colorPrimary": "#ba0c2f",
       "region": "southeast",
-      "conference": "GLF",
+      "conference": "DSC",
       "prestige": 80,
       "isTop50": true
     },
@@ -389,7 +389,7 @@
       "name": "Greenville",
       "colorPrimary": "#582c83",
       "region": "southeast",
-      "conference": "SOA",
+      "conference": "TID",
       "prestige": 79,
       "isTop50": true
     },
@@ -398,7 +398,7 @@
       "name": "Westwood",
       "colorPrimary": "#2d68c4",
       "region": "pacific",
-      "conference": "PCC",
+      "conference": "PAC",
       "prestige": 79,
       "isTop50": true
     },
@@ -407,7 +407,7 @@
       "name": "Berkeley",
       "colorPrimary": "#003262",
       "region": "pacific",
-      "conference": "PCC",
+      "conference": "PAC",
       "prestige": 79,
       "isTop50": true
     },
@@ -425,7 +425,7 @@
       "name": "Morningside",
       "colorPrimary": "#9bddff",
       "region": "northeast",
-      "conference": "EMP",
+      "conference": "HER",
       "prestige": 78,
       "isTop50": true
     },
@@ -434,7 +434,7 @@
       "name": "Green Country",
       "colorPrimary": "#002d72",
       "region": "southcentral",
-      "conference": "FRO",
+      "conference": "GPC",
       "prestige": 78,
       "isTop50": true
     },
@@ -443,7 +443,7 @@
       "name": "Bluegrass",
       "colorPrimary": "#7b1e3b",
       "region": "southeast",
-      "conference": "SOA",
+      "conference": "DSC",
       "prestige": 77,
       "isTop50": true
     },
@@ -452,7 +452,7 @@
       "name": "Spokane",
       "colorPrimary": "#041e42",
       "region": "pacific",
-      "conference": "PCC",
+      "conference": "PAC",
       "prestige": 77,
       "isTop50": true
     },
@@ -461,7 +461,7 @@
       "name": "Atlanta",
       "colorPrimary": "#b3a369",
       "region": "southeast",
-      "conference": "GLF",
+      "conference": "ESC",
       "prestige": 76,
       "isTop50": true
     },
@@ -470,7 +470,7 @@
       "name": "Oxford",
       "colorPrimary": "#13294b",
       "region": "southeast",
-      "conference": "GLF",
+      "conference": "DSC",
       "prestige": 75,
       "isTop50": true
     },
@@ -479,7 +479,7 @@
       "name": "Lubbock",
       "colorPrimary": "#cc0000",
       "region": "southcentral",
-      "conference": "FRO",
+      "conference": "GPC",
       "prestige": 75,
       "isTop50": false
     },
@@ -488,7 +488,7 @@
       "name": "College Station",
       "colorPrimary": "#500000",
       "region": "southcentral",
-      "conference": "SOA",
+      "conference": "DSC",
       "prestige": 75,
       "isTop50": false
     },
@@ -497,7 +497,7 @@
       "name": "Mid-Missouri",
       "colorPrimary": "#f1b82d",
       "region": "heartland",
-      "conference": "HLC",
+      "conference": "DSC",
       "prestige": 74,
       "isTop50": false
     },
@@ -506,7 +506,7 @@
       "name": "Durham",
       "colorPrimary": "#003087",
       "region": "southeast",
-      "conference": "ATL",
+      "conference": "ESC",
       "prestige": 74,
       "isTop50": false
     },
@@ -515,7 +515,7 @@
       "name": "Logan",
       "colorPrimary": "#00263a",
       "region": "mountain",
-      "conference": "MWL",
+      "conference": "RMC",
       "prestige": 73,
       "isTop50": false
     },
@@ -524,7 +524,7 @@
       "name": "Bangor",
       "colorPrimary": "#283593",
       "region": "northeast",
-      "conference": "COL",
+      "conference": "HER",
       "prestige": 59,
       "isTop50": false
     },
@@ -533,7 +533,7 @@
       "name": "Richmond",
       "colorPrimary": "#6a1b9a",
       "region": "midatlantic",
-      "conference": "COL",
+      "conference": "MET",
       "prestige": 58,
       "isTop50": false
     },
@@ -542,7 +542,7 @@
       "name": "Murfreesboro",
       "colorPrimary": "#2e7d32",
       "region": "southeast",
-      "conference": "GLF",
+      "conference": "ESC",
       "prestige": 65,
       "isTop50": false
     },
@@ -560,7 +560,7 @@
       "name": "Grand Forks",
       "colorPrimary": "#1f6feb",
       "region": "heartland",
-      "conference": "FRO",
+      "conference": "GLC",
       "prestige": 53,
       "isTop50": false
     },
@@ -569,7 +569,7 @@
       "name": "Edmond",
       "colorPrimary": "#ad1457",
       "region": "southcentral",
-      "conference": "FRO",
+      "conference": "GPC",
       "prestige": 40,
       "isTop50": false
     },
@@ -578,7 +578,7 @@
       "name": "Pocatello",
       "colorPrimary": "#2e7d32",
       "region": "mountain",
-      "conference": "MWL",
+      "conference": "RMC",
       "prestige": 62,
       "isTop50": false
     },
@@ -587,7 +587,7 @@
       "name": "Prescott",
       "colorPrimary": "#2e7d32",
       "region": "west",
-      "conference": "MWL",
+      "conference": "RMC",
       "prestige": 64,
       "isTop50": false
     },
@@ -596,7 +596,7 @@
       "name": "Humboldt",
       "colorPrimary": "#6a1b9a",
       "region": "pacific",
-      "conference": "MWL",
+      "conference": "RMC",
       "prestige": 53,
       "isTop50": false
     },
@@ -605,7 +605,7 @@
       "name": "Hartford",
       "colorPrimary": "#455a64",
       "region": "northeast",
-      "conference": "EMP",
+      "conference": "MET",
       "prestige": 57,
       "isTop50": false
     },
@@ -614,7 +614,7 @@
       "name": "Harrisburg",
       "colorPrimary": "#2e7d32",
       "region": "midatlantic",
-      "conference": "COL",
+      "conference": "MET",
       "prestige": 48,
       "isTop50": false
     },
@@ -623,7 +623,7 @@
       "name": "Tallahassee",
       "colorPrimary": "#455a64",
       "region": "southeast",
-      "conference": "ATL",
+      "conference": "TID",
       "prestige": 45,
       "isTop50": false
     },
@@ -641,7 +641,7 @@
       "name": "Brookings",
       "colorPrimary": "#00838f",
       "region": "heartland",
-      "conference": "FRO",
+      "conference": "GLC",
       "prestige": 42,
       "isTop50": false
     },
@@ -650,7 +650,7 @@
       "name": "Huntsville TX",
       "colorPrimary": "#00838f",
       "region": "southcentral",
-      "conference": "FRO",
+      "conference": "GPC",
       "prestige": 43,
       "isTop50": false
     },
@@ -659,7 +659,7 @@
       "name": "Missoula",
       "colorPrimary": "#c62828",
       "region": "mountain",
-      "conference": "MWL",
+      "conference": "RMC",
       "prestige": 53,
       "isTop50": false
     },
@@ -668,7 +668,7 @@
       "name": "Las Cruces",
       "colorPrimary": "#1f6feb",
       "region": "west",
-      "conference": "FRO",
+      "conference": "GPC",
       "prestige": 60,
       "isTop50": false
     },
@@ -677,7 +677,7 @@
       "name": "Northridge",
       "colorPrimary": "#4e342e",
       "region": "pacific",
-      "conference": "PCC",
+      "conference": "PAC",
       "prestige": 45,
       "isTop50": false
     },
@@ -686,7 +686,7 @@
       "name": "Manchester",
       "colorPrimary": "#d2691e",
       "region": "northeast",
-      "conference": "MET",
+      "conference": "MIN",
       "prestige": 68,
       "isTop50": false
     },
@@ -695,7 +695,7 @@
       "name": "Dover",
       "colorPrimary": "#00695c",
       "region": "midatlantic",
-      "conference": "MET",
+      "conference": "TID",
       "prestige": 56,
       "isTop50": false
     },
@@ -704,7 +704,7 @@
       "name": "Mobile",
       "colorPrimary": "#6a1b9a",
       "region": "southeast",
-      "conference": "GLF",
+      "conference": "ESC",
       "prestige": 61,
       "isTop50": false
     },
@@ -722,7 +722,7 @@
       "name": "Rolla",
       "colorPrimary": "#00695c",
       "region": "heartland",
-      "conference": "FRO",
+      "conference": "GLC",
       "prestige": 55,
       "isTop50": false
     },
@@ -731,7 +731,7 @@
       "name": "Amarillo",
       "colorPrimary": "#4e342e",
       "region": "southcentral",
-      "conference": "FRO",
+      "conference": "GPC",
       "prestige": 49,
       "isTop50": false
     },
@@ -740,7 +740,7 @@
       "name": "Moscow ID",
       "colorPrimary": "#d2691e",
       "region": "mountain",
-      "conference": "FRO",
+      "conference": "GPC",
       "prestige": 53,
       "isTop50": false
     },
@@ -749,7 +749,7 @@
       "name": "Fullerton",
       "colorPrimary": "#00838f",
       "region": "west",
-      "conference": "MWL",
+      "conference": "RMC",
       "prestige": 45,
       "isTop50": false
     },
@@ -758,7 +758,7 @@
       "name": "Bellingham",
       "colorPrimary": "#2e7d32",
       "region": "pacific",
-      "conference": "MWL",
+      "conference": "RMC",
       "prestige": 51,
       "isTop50": false
     },
@@ -767,7 +767,7 @@
       "name": "Portland ME",
       "colorPrimary": "#c62828",
       "region": "northeast",
-      "conference": "COL",
+      "conference": "HER",
       "prestige": 46,
       "isTop50": false
     },
@@ -776,7 +776,7 @@
       "name": "Fairfax",
       "colorPrimary": "#6a1b9a",
       "region": "midatlantic",
-      "conference": "MET",
+      "conference": "TID",
       "prestige": 62,
       "isTop50": false
     },
@@ -785,7 +785,7 @@
       "name": "Augusta",
       "colorPrimary": "#283593",
       "region": "southeast",
-      "conference": "SOA",
+      "conference": "DSC",
       "prestige": 50,
       "isTop50": false
     },
@@ -794,7 +794,7 @@
       "name": "Toledo",
       "colorPrimary": "#ad1457",
       "region": "greatlakes",
-      "conference": "MET",
+      "conference": "MID",
       "prestige": 65,
       "isTop50": false
     },
@@ -803,7 +803,7 @@
       "name": "Manhattan KS",
       "colorPrimary": "#ad1457",
       "region": "heartland",
-      "conference": "HLC",
+      "conference": "GPC",
       "prestige": 54,
       "isTop50": false
     },
@@ -812,7 +812,7 @@
       "name": "Little Rock",
       "colorPrimary": "#4e342e",
       "region": "southcentral",
-      "conference": "FRO",
+      "conference": "GPC",
       "prestige": 60,
       "isTop50": false
     },
@@ -821,7 +821,7 @@
       "name": "Ogden",
       "colorPrimary": "#c62828",
       "region": "mountain",
-      "conference": "MWL",
+      "conference": "RMC",
       "prestige": 40,
       "isTop50": false
     },
@@ -830,7 +830,7 @@
       "name": "Las Vegas",
       "colorPrimary": "#455a64",
       "region": "west",
-      "conference": "FRO",
+      "conference": "GPC",
       "prestige": 68,
       "isTop50": false
     },
@@ -839,7 +839,7 @@
       "name": "Fresno",
       "colorPrimary": "#455a64",
       "region": "pacific",
-      "conference": "PCC",
+      "conference": "PAC",
       "prestige": 48,
       "isTop50": false
     },
@@ -848,7 +848,7 @@
       "name": "Scranton",
       "colorPrimary": "#00695c",
       "region": "northeast",
-      "conference": "COL",
+      "conference": "HER",
       "prestige": 59,
       "isTop50": false
     },
@@ -857,7 +857,7 @@
       "name": "Annapolis",
       "colorPrimary": "#283593",
       "region": "midatlantic",
-      "conference": "COL",
+      "conference": "MET",
       "prestige": 49,
       "isTop50": false
     },
@@ -866,7 +866,7 @@
       "name": "Asheville",
       "colorPrimary": "#455a64",
       "region": "southeast",
-      "conference": "GLF",
+      "conference": "ESC",
       "prestige": 57,
       "isTop50": false
     },
@@ -884,7 +884,7 @@
       "name": "Lincoln",
       "colorPrimary": "#2e7d32",
       "region": "heartland",
-      "conference": "HLC",
+      "conference": "GPC",
       "prestige": 60,
       "isTop50": false
     },
@@ -893,7 +893,7 @@
       "name": "Waco",
       "colorPrimary": "#6a1b9a",
       "region": "southcentral",
-      "conference": "FRO",
+      "conference": "GPC",
       "prestige": 41,
       "isTop50": false
     },
@@ -902,7 +902,7 @@
       "name": "Flagstaff North",
       "colorPrimary": "#00695c",
       "region": "mountain",
-      "conference": "MWL",
+      "conference": "RMC",
       "prestige": 51,
       "isTop50": false
     },
@@ -911,7 +911,7 @@
       "name": "Henderson",
       "colorPrimary": "#f9a825",
       "region": "west",
-      "conference": "FRO",
+      "conference": "GPC",
       "prestige": 52,
       "isTop50": false
     },
@@ -920,7 +920,7 @@
       "name": "Santa Barbara",
       "colorPrimary": "#455a64",
       "region": "pacific",
-      "conference": "MWL",
+      "conference": "RMC",
       "prestige": 64,
       "isTop50": false
     },
@@ -929,7 +929,7 @@
       "name": "Hoboken",
       "colorPrimary": "#d2691e",
       "region": "northeast",
-      "conference": "COL",
+      "conference": "HER",
       "prestige": 57,
       "isTop50": false
     },
@@ -938,7 +938,7 @@
       "name": "Towson",
       "colorPrimary": "#c62828",
       "region": "midatlantic",
-      "conference": "ATL",
+      "conference": "ESC",
       "prestige": 55,
       "isTop50": false
     },
@@ -947,7 +947,7 @@
       "name": "Johnson City",
       "colorPrimary": "#283593",
       "region": "southeast",
-      "conference": "GLF",
+      "conference": "ESC",
       "prestige": 64,
       "isTop50": false
     },
@@ -965,7 +965,7 @@
       "name": "Springfield MO",
       "colorPrimary": "#f9a825",
       "region": "heartland",
-      "conference": "FRO",
+      "conference": "GLC",
       "prestige": 68,
       "isTop50": false
     },
@@ -974,7 +974,7 @@
       "name": "Lafayette",
       "colorPrimary": "#283593",
       "region": "southcentral",
-      "conference": "SOA",
+      "conference": "DSC",
       "prestige": 64,
       "isTop50": false
     },
@@ -983,7 +983,7 @@
       "name": "Billings",
       "colorPrimary": "#00695c",
       "region": "mountain",
-      "conference": "MWL",
+      "conference": "RMC",
       "prestige": 65,
       "isTop50": false
     },
@@ -992,7 +992,7 @@
       "name": "Flagstaff West",
       "colorPrimary": "#00838f",
       "region": "west",
-      "conference": "PCC",
+      "conference": "PAC",
       "prestige": 58,
       "isTop50": false
     },
@@ -1001,7 +1001,7 @@
       "name": "Salem",
       "colorPrimary": "#d2691e",
       "region": "pacific",
-      "conference": "MWL",
+      "conference": "RMC",
       "prestige": 50,
       "isTop50": false
     },
@@ -1010,7 +1010,7 @@
       "name": "Providence",
       "colorPrimary": "#ad1457",
       "region": "northeast",
-      "conference": "EMP",
+      "conference": "MET",
       "prestige": 61,
       "isTop50": false
     },
@@ -1019,7 +1019,7 @@
       "name": "Bethlehem",
       "colorPrimary": "#00695c",
       "region": "midatlantic",
-      "conference": "MET",
+      "conference": "TID",
       "prestige": 60,
       "isTop50": false
     },
@@ -1028,7 +1028,7 @@
       "name": "Savannah",
       "colorPrimary": "#d2691e",
       "region": "southeast",
-      "conference": "SOA",
+      "conference": "DSC",
       "prestige": 41,
       "isTop50": false
     },
@@ -1046,7 +1046,7 @@
       "name": "Duluth",
       "colorPrimary": "#2e7d32",
       "region": "heartland",
-      "conference": "FRO",
+      "conference": "GLC",
       "prestige": 59,
       "isTop50": false
     },
@@ -1055,7 +1055,7 @@
       "name": "Wichita Falls",
       "colorPrimary": "#00695c",
       "region": "southcentral",
-      "conference": "FRO",
+      "conference": "GPC",
       "prestige": 53,
       "isTop50": false
     },
@@ -1064,7 +1064,7 @@
       "name": "Rexburg",
       "colorPrimary": "#6a1b9a",
       "region": "mountain",
-      "conference": "MWL",
+      "conference": "RMC",
       "prestige": 44,
       "isTop50": false
     },
@@ -1073,7 +1073,7 @@
       "name": "Boulder Flats",
       "colorPrimary": "#455a64",
       "region": "west",
-      "conference": "MWL",
+      "conference": "RMC",
       "prestige": 55,
       "isTop50": false
     },
@@ -1082,7 +1082,7 @@
       "name": "Monterey",
       "colorPrimary": "#d2691e",
       "region": "pacific",
-      "conference": "PCC",
+      "conference": "PAC",
       "prestige": 40,
       "isTop50": false
     },
@@ -1091,7 +1091,7 @@
       "name": "Worcester",
       "colorPrimary": "#1f6feb",
       "region": "northeast",
-      "conference": "MET",
+      "conference": "MIN",
       "prestige": 65,
       "isTop50": false
     },
@@ -1100,7 +1100,7 @@
       "name": "Newark",
       "colorPrimary": "#d2691e",
       "region": "midatlantic",
-      "conference": "COL",
+      "conference": "MET",
       "prestige": 63,
       "isTop50": false
     },
@@ -1109,7 +1109,7 @@
       "name": "Charleston",
       "colorPrimary": "#2e7d32",
       "region": "southeast",
-      "conference": "GLF",
+      "conference": "ESC",
       "prestige": 60,
       "isTop50": false
     },
@@ -1127,7 +1127,7 @@
       "name": "Fargo",
       "colorPrimary": "#455a64",
       "region": "heartland",
-      "conference": "FRO",
+      "conference": "GLC",
       "prestige": 63,
       "isTop50": false
     },
@@ -1136,7 +1136,7 @@
       "name": "El Paso",
       "colorPrimary": "#1f6feb",
       "region": "southcentral",
-      "conference": "FRO",
+      "conference": "GPC",
       "prestige": 42,
       "isTop50": false
     },
@@ -1145,7 +1145,7 @@
       "name": "Bozeman",
       "colorPrimary": "#4e342e",
       "region": "mountain",
-      "conference": "MWL",
+      "conference": "RMC",
       "prestige": 59,
       "isTop50": false
     },
@@ -1154,7 +1154,7 @@
       "name": "Carson City",
       "colorPrimary": "#1f6feb",
       "region": "west",
-      "conference": "FRO",
+      "conference": "GPC",
       "prestige": 51,
       "isTop50": false
     },
@@ -1163,7 +1163,7 @@
       "name": "Tacoma",
       "colorPrimary": "#f9a825",
       "region": "pacific",
-      "conference": "PCC",
+      "conference": "PAC",
       "prestige": 55,
       "isTop50": false
     },
@@ -1172,7 +1172,7 @@
       "name": "Buffalo",
       "colorPrimary": "#00838f",
       "region": "northeast",
-      "conference": "MET",
+      "conference": "MIN",
       "prestige": 47,
       "isTop50": false
     },
@@ -1181,7 +1181,7 @@
       "name": "Camden",
       "colorPrimary": "#00838f",
       "region": "midatlantic",
-      "conference": "MET",
+      "conference": "TID",
       "prestige": 59,
       "isTop50": false
     },
@@ -1190,7 +1190,7 @@
       "name": "Birmingham",
       "colorPrimary": "#6a1b9a",
       "region": "southeast",
-      "conference": "ATL",
+      "conference": "TID",
       "prestige": 54,
       "isTop50": false
     },
@@ -1199,7 +1199,7 @@
       "name": "Milwaukee",
       "colorPrimary": "#4e342e",
       "region": "greatlakes",
-      "conference": "MET",
+      "conference": "MID",
       "prestige": 56,
       "isTop50": false
     },
@@ -1208,7 +1208,7 @@
       "name": "Cedar Rapids",
       "colorPrimary": "#00838f",
       "region": "heartland",
-      "conference": "FRO",
+      "conference": "GLC",
       "prestige": 62,
       "isTop50": false
     },
@@ -1217,7 +1217,7 @@
       "name": "Tulsa Hills",
       "colorPrimary": "#4e342e",
       "region": "southcentral",
-      "conference": "SOA",
+      "conference": "DSC",
       "prestige": 65,
       "isTop50": false
     },
@@ -1226,7 +1226,7 @@
       "name": "Laramie",
       "colorPrimary": "#6a1b9a",
       "region": "mountain",
-      "conference": "FRO",
+      "conference": "GPC",
       "prestige": 65,
       "isTop50": false
     },
@@ -1235,7 +1235,7 @@
       "name": "Mesa",
       "colorPrimary": "#455a64",
       "region": "west",
-      "conference": "PCC",
+      "conference": "PAC",
       "prestige": 64,
       "isTop50": false
     },
@@ -1244,7 +1244,7 @@
       "name": "Ellensburg",
       "colorPrimary": "#4e342e",
       "region": "pacific",
-      "conference": "MWL",
+      "conference": "RMC",
       "prestige": 44,
       "isTop50": false
     },
@@ -1253,7 +1253,7 @@
       "name": "New Haven",
       "colorPrimary": "#00695c",
       "region": "northeast",
-      "conference": "MET",
+      "conference": "MIN",
       "prestige": 47,
       "isTop50": false
     },
@@ -1262,7 +1262,7 @@
       "name": "Chesapeake",
       "colorPrimary": "#4e342e",
       "region": "midatlantic",
-      "conference": "MET",
+      "conference": "TID",
       "prestige": 60,
       "isTop50": false
     },
@@ -1271,7 +1271,7 @@
       "name": "Columbia SC",
       "colorPrimary": "#283593",
       "region": "southeast",
-      "conference": "ATL",
+      "conference": "TID",
       "prestige": 55,
       "isTop50": false
     },
@@ -1289,7 +1289,7 @@
       "name": "Topeka",
       "colorPrimary": "#00695c",
       "region": "heartland",
-      "conference": "HLC",
+      "conference": "GPC",
       "prestige": 57,
       "isTop50": false
     },
@@ -1298,7 +1298,7 @@
       "name": "Conway",
       "colorPrimary": "#1f6feb",
       "region": "southcentral",
-      "conference": "SOA",
+      "conference": "DSC",
       "prestige": 44,
       "isTop50": false
     },
@@ -1307,7 +1307,7 @@
       "name": "Cheyenne",
       "colorPrimary": "#c62828",
       "region": "mountain",
-      "conference": "MWL",
+      "conference": "RMC",
       "prestige": 64,
       "isTop50": false
     },
@@ -1316,7 +1316,7 @@
       "name": "Riverside",
       "colorPrimary": "#d2691e",
       "region": "west",
-      "conference": "FRO",
+      "conference": "GPC",
       "prestige": 40,
       "isTop50": false
     },
@@ -1325,7 +1325,7 @@
       "name": "San Luis Obispo",
       "colorPrimary": "#6a1b9a",
       "region": "pacific",
-      "conference": "MWL",
+      "conference": "RMC",
       "prestige": 64,
       "isTop50": false
     },
@@ -1334,7 +1334,7 @@
       "name": "Binghamton",
       "colorPrimary": "#283593",
       "region": "northeast",
-      "conference": "MET",
+      "conference": "MIN",
       "prestige": 50,
       "isTop50": false
     },
@@ -1343,7 +1343,7 @@
       "name": "Trenton",
       "colorPrimary": "#2e7d32",
       "region": "midatlantic",
-      "conference": "COL",
+      "conference": "MET",
       "prestige": 53,
       "isTop50": false
     },
@@ -1352,7 +1352,7 @@
       "name": "Macon",
       "colorPrimary": "#4e342e",
       "region": "southeast",
-      "conference": "SOA",
+      "conference": "DSC",
       "prestige": 55,
       "isTop50": false
     },
@@ -1361,7 +1361,7 @@
       "name": "Peoria",
       "colorPrimary": "#d2691e",
       "region": "greatlakes",
-      "conference": "MET",
+      "conference": "MID",
       "prestige": 62,
       "isTop50": false
     },
@@ -1370,7 +1370,7 @@
       "name": "Vermillion",
       "colorPrimary": "#d2691e",
       "region": "heartland",
-      "conference": "FRO",
+      "conference": "GLC",
       "prestige": 41,
       "isTop50": false
     },
@@ -1379,7 +1379,7 @@
       "name": "Fayetteville",
       "colorPrimary": "#2e7d32",
       "region": "southcentral",
-      "conference": "FRO",
+      "conference": "GPC",
       "prestige": 46,
       "isTop50": false
     },
@@ -1388,7 +1388,7 @@
       "name": "Gunnison",
       "colorPrimary": "#283593",
       "region": "mountain",
-      "conference": "FRO",
+      "conference": "GPC",
       "prestige": 49,
       "isTop50": false
     },
@@ -1397,7 +1397,7 @@
       "name": "Yuma",
       "colorPrimary": "#4e342e",
       "region": "west",
-      "conference": "MWL",
+      "conference": "RMC",
       "prestige": 63,
       "isTop50": false
     },
@@ -1406,7 +1406,7 @@
       "name": "Davis",
       "colorPrimary": "#f9a825",
       "region": "pacific",
-      "conference": "PCC",
+      "conference": "PAC",
       "prestige": 54,
       "isTop50": false
     },
@@ -1415,7 +1415,7 @@
       "name": "Burlington",
       "colorPrimary": "#f9a825",
       "region": "northeast",
-      "conference": "EMP",
+      "conference": "MET",
       "prestige": 52,
       "isTop50": false
     },
@@ -1424,7 +1424,7 @@
       "name": "Hampton Roads",
       "colorPrimary": "#00695c",
       "region": "midatlantic",
-      "conference": "MET",
+      "conference": "TID",
       "prestige": 67,
       "isTop50": false
     },
@@ -1433,7 +1433,7 @@
       "name": "Chattanooga",
       "colorPrimary": "#455a64",
       "region": "southeast",
-      "conference": "SOA",
+      "conference": "DSC",
       "prestige": 59,
       "isTop50": false
     },
@@ -1442,7 +1442,7 @@
       "name": "Dayton",
       "colorPrimary": "#2e7d32",
       "region": "greatlakes",
-      "conference": "MET",
+      "conference": "MID",
       "prestige": 43,
       "isTop50": false
     },
@@ -1451,7 +1451,7 @@
       "name": "Sioux Falls",
       "colorPrimary": "#455a64",
       "region": "heartland",
-      "conference": "FRO",
+      "conference": "GLC",
       "prestige": 45,
       "isTop50": false
     },
@@ -1460,7 +1460,7 @@
       "name": "Commerce",
       "colorPrimary": "#4e342e",
       "region": "southcentral",
-      "conference": "SOA",
+      "conference": "DSC",
       "prestige": 41,
       "isTop50": false
     },
@@ -1469,7 +1469,7 @@
       "name": "Cedar City",
       "colorPrimary": "#6a1b9a",
       "region": "mountain",
-      "conference": "FRO",
+      "conference": "GPC",
       "prestige": 41,
       "isTop50": false
     },
@@ -1478,7 +1478,7 @@
       "name": "Albuquerque",
       "colorPrimary": "#f9a825",
       "region": "west",
-      "conference": "FRO",
+      "conference": "GPC",
       "prestige": 47,
       "isTop50": false
     },
@@ -1487,7 +1487,7 @@
       "name": "Irvine",
       "colorPrimary": "#2e7d32",
       "region": "pacific",
-      "conference": "PCC",
+      "conference": "PAC",
       "prestige": 58,
       "isTop50": false
     },
@@ -1496,7 +1496,7 @@
       "name": "Rochester",
       "colorPrimary": "#283593",
       "region": "northeast",
-      "conference": "EMP",
+      "conference": "MET",
       "prestige": 42,
       "isTop50": false
     },
@@ -1505,7 +1505,7 @@
       "name": "Baltimore",
       "colorPrimary": "#2e7d32",
       "region": "midatlantic",
-      "conference": "MET",
+      "conference": "TID",
       "prestige": 53,
       "isTop50": false
     },
@@ -1514,7 +1514,7 @@
       "name": "Boone",
       "colorPrimary": "#00695c",
       "region": "southeast",
-      "conference": "GLF",
+      "conference": "ESC",
       "prestige": 59,
       "isTop50": false
     },
@@ -1523,7 +1523,7 @@
       "name": "Grand Rapids",
       "colorPrimary": "#f9a825",
       "region": "greatlakes",
-      "conference": "MET",
+      "conference": "MID",
       "prestige": 50,
       "isTop50": false
     },
@@ -1532,7 +1532,7 @@
       "name": "Omaha",
       "colorPrimary": "#f9a825",
       "region": "heartland",
-      "conference": "FRO",
+      "conference": "GLC",
       "prestige": 52,
       "isTop50": false
     },
@@ -1541,7 +1541,7 @@
       "name": "San Antonio",
       "colorPrimary": "#00695c",
       "region": "southcentral",
-      "conference": "FRO",
+      "conference": "GPC",
       "prestige": 41,
       "isTop50": false
     },
@@ -1550,7 +1550,7 @@
       "name": "Boulder Creek",
       "colorPrimary": "#00695c",
       "region": "mountain",
-      "conference": "MWL",
+      "conference": "RMC",
       "prestige": 47,
       "isTop50": false
     },
@@ -1559,7 +1559,7 @@
       "name": "Tempe",
       "colorPrimary": "#ad1457",
       "region": "west",
-      "conference": "MWL",
+      "conference": "RMC",
       "prestige": 41,
       "isTop50": false
     },
@@ -1568,7 +1568,7 @@
       "name": "Pomona",
       "colorPrimary": "#ad1457",
       "region": "pacific",
-      "conference": "MWL",
+      "conference": "RMC",
       "prestige": 63,
       "isTop50": false
     },
@@ -1577,7 +1577,7 @@
       "name": "Albany",
       "colorPrimary": "#455a64",
       "region": "northeast",
-      "conference": "COL",
+      "conference": "HER",
       "prestige": 53,
       "isTop50": false
     },
@@ -1586,7 +1586,7 @@
       "name": "Allentown",
       "colorPrimary": "#00695c",
       "region": "midatlantic",
-      "conference": "COL",
+      "conference": "MET",
       "prestige": 56,
       "isTop50": false
     },
@@ -1595,7 +1595,7 @@
       "name": "Knoxville",
       "colorPrimary": "#1f6feb",
       "region": "southeast",
-      "conference": "ATL",
+      "conference": "TID",
       "prestige": 60,
       "isTop50": false
     },
@@ -1613,7 +1613,7 @@
       "name": "Wichita",
       "colorPrimary": "#283593",
       "region": "heartland",
-      "conference": "FRO",
+      "conference": "GLC",
       "prestige": 53,
       "isTop50": false
     },
@@ -1622,7 +1622,7 @@
       "name": "Shreveport",
       "colorPrimary": "#00695c",
       "region": "southcentral",
-      "conference": "SOA",
+      "conference": "DSC",
       "prestige": 52,
       "isTop50": false
     },
@@ -1631,7 +1631,7 @@
       "name": "Durango",
       "colorPrimary": "#d2691e",
       "region": "mountain",
-      "conference": "FRO",
+      "conference": "GPC",
       "prestige": 60,
       "isTop50": false
     },
@@ -1640,7 +1640,7 @@
       "name": "Santa Fe",
       "colorPrimary": "#f9a825",
       "region": "west",
-      "conference": "FRO",
+      "conference": "GPC",
       "prestige": 53,
       "isTop50": false
     }
