@@ -8,14 +8,15 @@ import type { TrainingBlock, VolumeLevel, Philosophy } from "../engine/types";
 export const BALANCE = {
   // ---------- Race model ----------
   race: {
-    base: 1.0,
+    base: 1.15,
     readinessWeight: 0.6,   // readiness vs course-fit split in perf
     fitWeight: 0.4,
-    pacingWeight: 0.12,     // Race IQ contribution
-    temperWeight: 0.1,      // big-meet temperament (champ tiers only)
-    noiseScale: 0.06,       // seeded outcome noise, scaled down by consistency
+    pacingWeight: 0.05,     // Race IQ contribution
+    temperWeight: 0.06,     // big-meet temperament (champ tiers only)
+    noiseScale: 0.05,       // seeded outcome noise, scaled down by consistency
     consistencyDamp: 0.7,   // how much consistency narrows noise
-    spread: 0.18,           // perf→time spread (fraction of par)
+    spread: 0.28,           // perf→time spread (fraction of par)
+    topPerf: 0.98,          // perf that maps to par (winner reference)
     packMax: 0.015,         // max shared boost for a tight pack
     packRefSpreadSec: 40,   // gap over top-5 at which pack boost → 0
     shoeBonusMax: 0.012,    // carbon plate max perf gain (×tier, ×firmness)
