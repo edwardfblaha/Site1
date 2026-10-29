@@ -1,1 +1,0 @@
-{"root":["./src/config/balance.ts","./src/engine/athletes.ts","./src/engine/index.ts","./src/engine/league.ts","./src/engine/names.ts","./src/engine/rng.ts","./src/engine/types.ts","./src/ui/App.tsx","./src/ui/main.tsx","./scripts/simulate.ts","./test/athletes.test.ts","./test/league.test.ts","./test/rng.test.ts"],"version":"5.9.3"}
