@@ -1,80 +1,57 @@
-# Harrier
+# Cross Country Manager
 
-**The athlete-first performance database for college cross country.**
+A single-player college cross country management game (working title). You are
+the head coach of a Division I-style men's program making coaching, training,
+recruiting, and budget decisions across multi-season careers. **No backend** —
+a static web app that runs entirely in the browser.
 
-National rankings for NCAA cross country athletes and teams, built from
-**head-to-head results** — who beat whom across every XC race and track 5k/10k —
-not from converting performances into fake-slow "5k equivalent" times.
+> Fully fictionalized: no real school names, mascots, logos, conferences, meets,
+> or athletes. Programs are named after their state/city/region and identified
+> by a color; athletes are procedurally generated.
 
-> Look yourself up, watch your rating climb, and send the screenshot to your teammates.
+## Tech
 
-## What it does
+- **TypeScript + React + Vite**, **Tailwind** UI, deploys to **GitHub Pages**.
+- Strict separation: a pure, DOM-free simulation **engine** in `src/engine`, UI
+  in `src/ui`. The engine is unit-tested with **Vitest**.
+- **Seeded, deterministic RNG** — same seed + same decisions ⇒ same results.
+- Saves to `localStorage` with JSON export/import (added in a later phase).
 
-- **National athlete rankings** (men & women) from a head-to-head rating model.
-- **Athlete profiles** — rating, national rank, win–loss record, win rate,
-  season trajectory, signature wins, notable losses, full race log, head-to-head
-  vs. nearby athletes, and teammates.
-- **Team rankings** — top-5 scoring with a top-7 depth figure.
-- **Race pages** — full finishing order with gaps.
-- **Instant search** across athletes and teams.
-- **Transparent methodology** page explaining exactly how a ranking is built.
-
-The interface is dark, fast, mobile-friendly, and made to be fun to browse.
-
-## Run it
-
-No build step. It's static files:
+## Scripts
 
 ```bash
-python3 -m http.server 8000
-# then open http://localhost:8000
+npm install
+npm run dev                      # local dev server
+npm test                         # engine unit tests (Vitest)
+npm run build                    # typecheck + production build
+npm run simulate -- --seasons 200   # headless balance simulator
+npm run gen:programs             # regenerate src/data/programs.json
 ```
 
-## How it works
+## Layout
 
-- `index.html` — shell + nav + search.
-- `styles.css` — the visual design.
-- `data.js` — the dataset (demo data; swap for `real_data.js`, see below).
-- `engine.js` — the head-to-head rating engine (see `METHODOLOGY.md`).
-- `app.js` — the single-page app (hash-routed views).
+```
+src/
+  engine/     pure simulation (rng, types, athletes, league, …) — no React/DOM
+  config/     balance.ts — ALL tunable constants in one file
+  data/       programs.json — ~180 fictional teams (hand-editable source of truth)
+  ui/         React + Tailwind screens/components
+scripts/      simulate.ts (CLI), gen-programs.mjs (program generator)
+test/         Vitest suites
+```
 
-The demo ships with **synthetic data** so every page is explorable immediately.
-It's clearly labeled and is **not** official results.
+## Status — build is phased
 
-## The ranking method (short version)
+1. ✅ **Phase 1:** scaffold, types, seeded RNG, athlete generator, `programs.json`.
+2. ⬜ Phase 2: race simulation + XC scoring + tests.
+3. ⬜ Phase 3: training/periodization, season calendar, championship path (Kolas at-large).
+4. ⬜ Phase 4: core UI.
+5. ⬜ Phase 5: economy, budget, staff, recruiting, portal, offseason.
+6. ⬜ Phase 6: narrative events, coach career, AI coaches, save/load.
+7. ⬜ Phase 7: balance pass via the headless simulator.
 
-Every race is a bracket of matchups: the winner beats everyone behind them,
-second beats everyone behind them, and so on. Harrier records all of those
-pairwise results — across cross country **and** track 5k/10k — weights them by
-recency and margin, and solves a single national rating per gender so that
-rating gaps best explain every head-to-head result at once. Beating someone who
-beats the top names lifts you, even if you never raced them directly. **No
-time-equivalence anywhere.** Full write-up in [`METHODOLOGY.md`](METHODOLOGY.md).
+## Deploying to GitHub Pages
 
-## Using real TFRRS data
-
-You don't scrape the whole site — you import the result pages you need.
-
-1. Put TFRRS meet **result-page URLs** (one per line) in `import/meets.txt`.
-   Browse <https://www.tfrrs.org/>, open a meet's results page, copy the URL.
-   Cross country **and** track 5k/10k meets both work.
-2. (Recommended) install a parser: `npm i node-html-parser`
-3. Run the importer:
-   ```bash
-   node import/tfrrs_import.mjs
-   ```
-   It politely fetches (rate-limited + cached in `import/.cache/`) and writes
-   `real_data.js`.
-4. In `index.html`, replace `<script src="data.js?v=...">` with
-   `<script src="real_data.js">`. The engine and UI work unchanged.
-
-**Be a good citizen:** keep the request delay, cache responses, set a real
-contact in the importer's `USER_AGENT`, and review TFRRS's terms before any
-large pull.
-
-## Roadmap
-
-The shipped engine is the fast linear core of the full design. Next steps
-(in `METHODOLOGY.md`): calibrated **win probabilities**, a **meet simulator**,
-**credible intervals** for sparse athletes, and a **"why is X ranked above Y"**
-transparency panel.
+`vite.config.ts` sets `base: '/site1/'`. Pushing to `main` runs
+`.github/workflows/pages.yml` (test → build → deploy). For a custom domain set
+`VITE_BASE=/`.

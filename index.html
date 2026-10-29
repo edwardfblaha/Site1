@@ -1,43 +1,13 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Harrier — NCAA Division I distance rankings</title>
-  <meta name="description" content="Harrier ranks NCAA Division I cross country athletes from head-to-head results — who finished ahead of whom, across the 2026 season." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=28" />
-</head>
-<body>
-  <header class="nav">
-    <a class="brand" href="#/">
-      <span class="brand-mark" aria-hidden="true"></span>
-      <span class="brand-name">Harrier</span>
-    </a>
-    <nav class="nav-links">
-      <a href="#/rankings/M" data-nav="rankings">Athletes</a>
-      <a href="#/teams/M" data-nav="teams">Teams</a>
-      <a href="#/races" data-nav="races">Races</a>
-      <a href="#/methodology" data-nav="methodology">Methodology</a>
-    </nav>
-    <div class="nav-search">
-      <input type="search" id="search" placeholder="Search athletes & teams…" autocomplete="off" />
-      <div class="search-results" id="searchResults" hidden></div>
-    </div>
-  </header>
-
-  <main id="app" class="app"></main>
-
-  <footer class="foot">
-    <span>Harrier · NCAA Division I distance rankings</span>
-    <span class="foot-note">2026 NCAA Division I cross country season.</span>
-  </footer>
-
-  <script src="results-data.js?v=28"></script>
-  <script src="data.js?v=28"></script>
-  <script src="engine.js?v=28"></script>
-  <script src="app.js?v=28"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cross Country Manager</title>
+    <meta name="description" content="A single-player NCAA-style college cross country management game." />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/ui/main.tsx"></script>
+  </body>
 </html>
