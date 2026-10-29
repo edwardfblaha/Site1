@@ -73,7 +73,13 @@ function performance(
   let perf = R.base * (R.readinessWeight * rdy + R.fitWeight * fit);
   perf += R.pacingWeight * (N(a.attrs.raceIQ) - 0.5);
   const nervy = isChamp && a.hidden.bigMeetTemperament < 45;
-  if (isChamp) perf += R.temperWeight * (N(a.hidden.bigMeetTemperament) - 0.5);
+  if (isChamp) {
+    perf += R.temperWeight * (N(a.hidden.bigMeetTemperament) - 0.5);
+    // Championship under-preparation: too little season-long VO2/race-specific
+    // dose ⇒ fine in the regular season, fades when the race gets honest.
+    const prepRatio = clamp(a.fitness.champPrep / BALANCE.fitness.champPrepTarget, 0, 1.3);
+    perf += R.champPrepWeight * (prepRatio - 1);
+  }
 
   // Shoe tech: bigger on firm, fast courses.
   const shoeTier = entrant.shoeTier ?? 0;

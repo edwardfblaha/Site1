@@ -13,6 +13,7 @@ export const BALANCE = {
     fitWeight: 0.4,
     pacingWeight: 0.05,     // Race IQ contribution
     temperWeight: 0.06,     // big-meet temperament (champ tiers only)
+    champPrepWeight: 0.08,  // championship under-preparation penalty (champ tiers)
     noiseScale: 0.05,       // seeded outcome noise, scaled down by consistency
     consistencyDamp: 0.7,   // how much consistency narrows noise
     spread: 0.28,           // perf→time spread (fraction of par)
@@ -66,12 +67,12 @@ export const BALANCE = {
     balanced:  { label: "Balanced",              aerobicMult: 1.0,  intensityMult: 1.0,  injuryMult: 1.0, peakSharpness: 1.0,  unlockRep: 0 },
     intensity: { label: "Intensity-first",       aerobicMult: 0.85, intensityMult: 1.25, injuryMult: 1.25, peakSharpness: 1.05, unlockRep: 35 },
     altitude:  { label: "Altitude",              aerobicMult: 1.15, intensityMult: 0.95, injuryMult: 0.95, peakSharpness: 1.0,  unlockRep: 50 },
-    norwegian: { label: "Norwegian double threshold", aerobicMult: 1.05, intensityMult: 1.1, injuryMult: 0.9, peakSharpness: 1.1, unlockRep: 70, needsLab: true },
+    norwegian: { label: "Norwegian double threshold", aerobicMult: 1.05, intensityMult: 1.08, injuryMult: 0.96, peakSharpness: 1.05, unlockRep: 70, needsLab: true },
   } satisfies Record<Philosophy, Record<string, unknown>>,
 
   // ---------- Injury / burnout ----------
   injury: {
-    base: 0.012,                 // weekly baseline
+    base: 0.018,                 // weekly baseline
     acwrSpikePenalty: 2.5,       // multiplier when ACWR above safe band
     fatiguePenalty: 1.0,         // + fatigue/cap
     durabilityRelief: 0.6,       // high durability reduces risk
@@ -109,7 +110,7 @@ export const BALANCE = {
   // ---------- Recruiting signing logistic coefficients ----------
   recruiting: {
     beta0: -1.2, interest: 0.04, prestigeGap: 0.03, nil: 0.5, visit: 0.35,
-    media: 0.3, rep: 0.025, competing: 0.4,
+    media: 0.3, rep: 0.025, competing: 0.4, recruitBudget: 0.6,
     poolSizeHS: 320, poolSizeIntl: 70, poolSizeTransfer: 90,
     rosterLimit: 18,
   },

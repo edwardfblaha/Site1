@@ -43,15 +43,19 @@ test/         Vitest suites
 ## Status — build is phased
 
 1. ✅ **Phase 1:** scaffold, types, seeded RNG, athlete generator, `programs.json`.
-2. ⬜ Phase 2: race simulation + XC scoring + tests.
-3. ⬜ Phase 3: training/periodization, season calendar, championship path (Kolas at-large).
-4. ⬜ Phase 4: core UI.
-5. ⬜ Phase 5: economy, budget, staff, recruiting, portal, offseason.
-6. ⬜ Phase 6: narrative events, coach career, AI coaches, save/load.
-7. ⬜ Phase 7: balance pass via the headless simulator.
+2. ✅ **Phase 2:** race simulation + XC scoring + tests.
+3. ✅ **Phase 3:** training/periodization, season calendar, championship path (Kolas at-large).
+4. ✅ **Phase 4:** core UI (new game, season/training, roster, rankings, recruiting, budget, offseason).
+5. ✅ **Phase 5:** economy, budget, staff, recruiting, portal, offseason.
+6. ✅ **Phase 6:** narrative events, coach career, AI coaches, save/load (localStorage + JSON export/import).
+7. ✅ **Phase 7:** balance pass via the headless simulator — see [`BALANCE.md`](BALANCE.md).
+
+Play it: pick a program, train a periodized season, set lineups at meets, chase
+nationals, then recruit and manage your budget in the offseason — across seasons.
+Autosaves to the browser; export/import JSON from the sidebar.
 
 ## Deploying to GitHub Pages
 
-`vite.config.ts` sets `base: '/site1/'`. Pushing to `main` runs
-`.github/workflows/pages.yml` (test → build → deploy). For a custom domain set
-`VITE_BASE=/`.
+`vite.config.ts` sets `base: '/Site1/'`. The site is published to the `gh-pages`
+branch; enable Pages (Settings → Pages → Deploy from a branch → `gh-pages` / root).
+For a custom domain set `VITE_BASE=/`.

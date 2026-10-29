@@ -1,57 +1,74 @@
 /**
- * Headless balance simulator (CLI).  `npm run simulate -- --seasons 200`
+ * Headless balance simulator.  `npm run simulate -- --seasons 200 [--seed N]`
  *
- * Phase 2: simulates one regular-season meet between real league programs and
- * prints the team scores + the winning team's five scorers with splits — the
- * "headless sim of one regular-season meet" deliverable. Full multi-season
- * auto-play + balance stats arrive in Phase 3/7.
+ * Auto-plays full seasons with AI coaches and reports the balance signals the
+ * design calls for: champion distribution/concentration, injury rate, average
+ * national finish by coaching philosophy, and whether the top-50 preseason
+ * programs dominate the podium (a proxy for talent mattering).
  */
+import { buildLeague } from "../src/engine/league";
+import { simulateSeason } from "../src/engine/season";
+import { runFullOffseason, preseasonReset } from "../src/engine/offseason";
+import { generateRecruitPool } from "../src/engine/recruiting";
 import { Rng } from "../src/engine/rng";
-import { buildLeague, findProgram } from "../src/engine/league";
-import { simulateMeet, type RaceEntrant } from "../src/engine/meet";
-import type { Meet, Program } from "../src/engine/types";
 
 function arg(name: string, def: string): string {
   const i = process.argv.indexOf(`--${name}`);
   return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : def;
 }
-
+const seasons = parseInt(arg("seasons", "50"), 10);
 const seed = parseInt(arg("seed", "2026"), 10);
+
 const programs = buildLeague(seed, "oregon");
-const rng = new Rng(seed).fork("sim:meet1");
+const top50 = new Set(programs.filter((p) => p.def.isTop50).map((p) => p.def.id));
+const nameOf = (id: string) => programs.find((p) => p.def.id === id)?.def.name ?? id;
 
-// Pick 8 strong programs for a marquee early-season invitational.
-const field = [...programs].sort((a, b) => b.prestige - a.prestige).slice(0, 8);
+const champions = new Map<string, number>();
+const finishByPhilosophy = new Map<string, { sum: number; n: number }>();
+let injuryTotal = 0, athleteWeeks = 0, top50Podiums = 0, podiums = 0;
 
-function lineup(p: Program): RaceEntrant {
-  const healthy = p.roster.filter((a) => a.status.kind === "healthy");
-  const seven = [...healthy].sort((a, b) => b.starRating - a.starRating).slice(0, 7);
-  return { programId: p.def.id, athletes: seven, shoeTier: p.budget.investments.shoeTier };
+const t0 = Date.now();
+for (let s = 0; s < seasons; s++) {
+  const year = 2026 + s;
+  preseasonReset(programs);
+  const res = simulateSeason(programs, seed + s, year);
+
+  champions.set(res.champion, (champions.get(res.champion) ?? 0) + 1);
+  injuryTotal += res.injuriesDuringSeason;
+  athleteWeeks += programs.reduce((n, p) => n + p.roster.length, 0) * 12;
+
+  // podium (top 3) share that are preseason top-50 programs
+  for (const id of res.nationalsOrder.slice(0, 3)) { podiums++; if (top50.has(id)) top50Podiums++; }
+
+  // average national finish by philosophy (DNQ counts as 45)
+  const finishMap = new Map<string, number>();
+  res.nationalsOrder.forEach((id, i) => finishMap.set(id, i + 1));
+  for (const p of programs) {
+    const f = finishMap.get(p.def.id) ?? 45;
+    const e = finishByPhilosophy.get(p.aiPhilosophy) ?? { sum: 0, n: 0 };
+    e.sum += f; e.n++;
+    finishByPhilosophy.set(p.aiPhilosophy, e);
+  }
+
+  runFullOffseason(programs, generateRecruitPool(new Rng(seed + s), year), new Rng(seed + s).fork(`off:${year}`));
 }
+const secs = ((Date.now() - t0) / 1000).toFixed(1);
 
-const meet: Meet = {
-  id: "madison-inv", name: "Madison Invitational", tier: "regular", week: 4,
-  prestige: 80, travelCost: 20,
-  course: { distance: 8000, terrain: 0.35, firmness: 0.7, altitude: 260 },
-};
+const champCounts = [...champions.values()].sort((a, b) => b - a);
+const distinctChampions = champions.size;
+const herfindahl = champCounts.reduce((s, c) => s + (c / seasons) ** 2, 0); // 1 = monopoly
 
-const result = simulateMeet(meet, field.map(lineup), rng);
+console.log(`=== Balance report — ${seasons} seasons (seed ${seed}, ${secs}s) ===\n`);
 
-const fmt = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`;
-const name = (id: string) => findProgram(programs, id)!.def.name;
+console.log("Champion distribution:");
+console.log(`  distinct champions: ${distinctChampions}  concentration (HHI): ${herfindahl.toFixed(3)} (lower = more parity)`);
+[...champions.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8)
+  .forEach(([id, n]) => console.log(`    ${nameOf(id).padEnd(16)} ${n} (${((n / seasons) * 100).toFixed(0)}%)`));
 
-console.log(`=== ${meet.name} — ${meet.course.distance / 1000}k (seed ${seed}) ===\n`);
-console.log("Team scores:");
-for (const t of result.teamScores) {
-  console.log(`  ${String(t.teamPlace).padStart(2)}. ${name(t.programId).padEnd(16)} ${String(t.score).padStart(4)}  (6th: ${t.sixthRunnerPlace})`);
-}
+console.log(`\nInjuries: ${(injuryTotal / athleteWeeks * 1000).toFixed(2)} per 1000 athlete-weeks`);
 
-const champ = result.teamScores[0];
-console.log(`\nWinning team: ${name(champ.programId)} — scorers:`);
-for (const aid of champ.scorers) {
-  const r = result.runners.find((x) => x.athleteId === aid)!;
-  const prog = findProgram(programs, champ.programId)!;
-  const ath = prog.roster.find((a) => a.id === aid)!;
-  console.log(`  ${String(r.place).padStart(3)}  ${(ath.firstName + " " + ath.lastName).padEnd(22)} ${fmt(r.timeSec)}  ${r.notes[0] ?? ""}`);
-}
-console.log(`\n${result.runners.length} finishers · ${result.teamScores.length} complete teams.`);
+console.log(`\nPodium share from preseason top-50 programs: ${(top50Podiums / podiums * 100).toFixed(0)}% (talent should matter)`);
+
+console.log("\nAverage national finish by coaching philosophy (lower = better; 45 = DNQ):");
+[...finishByPhilosophy.entries()].sort((a, b) => a[1].sum / a[1].n - b[1].sum / b[1].n)
+  .forEach(([phil, e]) => console.log(`    ${phil.padEnd(11)} ${(e.sum / e.n).toFixed(1)}  (n=${e.n})`));
