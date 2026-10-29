@@ -12,11 +12,11 @@ export function Roster() {
   return (
     <div className="space-y-4">
       <div className="flex items-end justify-between">
-        <h1 className="text-2xl font-black">Roster <span className="text-slate-400">({roster.length}/18)</span></h1>
-        <div className="text-sm text-slate-500">Sports scientist tier {sci} {sci >= 2 ? "· potentials visible" : "· hidden attrs reveal through racing"}</div>
+        <h1 className="text-2xl font-black">Roster <span className="text-slate-500">({roster.length}/18)</span></h1>
+        <div className="text-xs text-slate-500">Sports scientist T{sci} · {sci >= 2 ? "potentials visible" : "hidden attrs reveal through racing"}</div>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {roster.map((a) => <AthleteCard key={a.id} a={a} sciTier={sci} />)}
+        {roster.map((a) => <AthleteCard key={a.id} a={a} color={p.def.colorPrimary} sciTier={sci} />)}
       </div>
     </div>
   );

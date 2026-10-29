@@ -2,5 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
-body { @apply bg-slate-50 text-slate-900 antialiased; }
+:root { color-scheme: dark; --accent: #38bdf8; --accent2: #0ea5e9; }
+html, body { margin: 0; }
+body {
+  @apply bg-slate-950 text-slate-100 antialiased;
+  background:
+    radial-gradient(1200px 700px at 80% -10%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 60%),
+    radial-gradient(900px 600px at -10% 0%, rgba(56,189,248,.08), transparent 55%),
+    #060a14;
+  min-height: 100vh;
+}
+
+@layer components {
+  .panel { @apply rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur; }
+  .panel-solid { @apply rounded-2xl border border-white/10 bg-slate-900; }
+  .btn-accent {
+    @apply rounded-xl px-5 py-3 font-bold text-slate-950 shadow-lg transition active:scale-[.98];
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    box-shadow: 0 10px 30px -8px color-mix(in srgb, var(--accent) 60%, transparent);
+  }
+  .btn-ghost { @apply rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 font-semibold text-slate-100 hover:bg-white/10; }
+  .chip { @apply rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide; }
+}

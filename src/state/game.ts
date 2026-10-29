@@ -251,4 +251,24 @@ export function startNextSeason(save: GameSave): void {
 export function topRunners(p: Program, n = 7): Athlete[] {
   return [...p.roster].sort((a, b) => overall(b) - overall(a)).slice(0, n);
 }
+
+/** A guided training recommendation for the current week (Madden-style coaching tip). */
+export function recommendedTraining(week: number): { block: import("../engine").TrainingBlock; volume: import("../engine").VolumeLevel; reason: string } {
+  if (week <= 2) return { block: "base", volume: "high", reason: "Early season — build the aerobic base high and safe." };
+  if (week <= 4) return { block: "longRun", volume: "high", reason: "Keep stacking mileage before intensity arrives." };
+  if (week <= 6) return { block: "threshold", volume: "high", reason: "Introduce threshold to raise the ceiling." };
+  if (week <= 8) return { block: "vo2", volume: "med", reason: "Add VO₂ sharpness — but watch fatigue." };
+  if (week <= 10) return { block: "raceSpecific", volume: "med", reason: "Sharpen specifically for championship racing." };
+  if (week === 11) return { block: "sharpening", volume: "low", reason: "Light and sharp going into regionals." };
+  return { block: "taper", volume: "low", reason: "Taper hard — arrive fresh for nationals." };
+}
+
+export function meetInfo(week: number): { label: string; sub: string; dist: string } | null {
+  if (week === 12) return { label: "National Championship", sub: "31 teams · the title is here", dist: "10k" };
+  if (week === 11) return { label: "Regional Championship", sub: "Top 2 auto-qualify for nationals", dist: "10k" };
+  if (week === 10) return { label: "Conference Championship", sub: "Beat your league rivals", dist: "8k" };
+  if (week === 4 || week === 6 || week === 8) return { label: "Invitational", sub: "Regular-season test", dist: "8k" };
+  return null;
+}
+
 export { aiLineup };
