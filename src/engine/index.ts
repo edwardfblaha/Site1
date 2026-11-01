@@ -10,6 +10,7 @@ export { simulateRace, type RaceEntrant } from "./race";
 export { scoreMeet } from "./scoring";
 export { simulateMeet } from "./meet";
 export { applyTraining, developAthlete, overall, type TrainCtx } from "./training";
+export { previewTraining, type TrainingPreview, type AthleteTrainingProjection } from "./preview";
 export { aiTrainingChoice, aiLineup, projectedStrength, competenceOf } from "./ai";
 export { computeHeadToHead, selectQualifiers, type QualificationResult } from "./championships";
 export {

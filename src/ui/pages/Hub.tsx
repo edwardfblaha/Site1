@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGame } from "../../state/store";
 import { player, isRaceWeek, playerQualified, recommendedTraining, meetInfo, nationalRankings, type GameSave } from "../../state/game";
-import { aiLineup, projectedStrength, type TrainingBlock, type VolumeLevel, type RaceResult, type Program } from "../../engine";
+import { aiLineup, projectedStrength, previewTraining, type TrainingBlock, type VolumeLevel, type RaceResult, type Program, type TrainingPreview } from "../../engine";
 import { Crest, Avatar } from "../components/art";
 import { Icon } from "../components/Icon";
 import { OVR, fmtTime } from "../components/ui";
@@ -89,6 +89,7 @@ function FocusCard({ save, p }: { save: GameSave; p: Program }) {
 
   if (!save.trainedThisWeek) {
     const meta = BLOCK_META[block];
+    const preview = previewTraining(p, { block, volume, hillEmphasis: hills });
     return (
       <FocusShell eyebrow={raceWeek ? "Decision 1 of 2 · Week " + save.week : "Week " + save.week}
         title="Set this week's training" body={rec.reason}>
@@ -109,6 +110,8 @@ function FocusCard({ save, p }: { save: GameSave; p: Program }) {
             <button className="btn-ghost" onClick={() => setAdjust((v) => !v)}>{adjust ? "Hide options" : "Adjust plan"}</button>
           </div>
         </div>
+
+        <TrainingPreviewPanel preview={preview} />
 
         {adjust && (
           <div className="mt-3 space-y-3">
@@ -190,6 +193,105 @@ function FocusShell({ eyebrow, title, body, children }: { eyebrow: string; title
       {body && <p className="mb-4 mt-1 max-w-xl text-sm text-slate-400">{body}</p>}
       {children}
     </section>
+  );
+}
+
+/* ---- live projection of a training choice (the heart of the decision) ---- */
+const SYS_META: { key: keyof TrainingPreview["after"]; label: string }[] = [
+  { key: "aerobicBase", label: "Aerobic" },
+  { key: "lactate", label: "Threshold" },
+  { key: "vo2", label: "VO₂" },
+  { key: "sharpness", label: "Sharpness" },
+];
+function riskColor(pct: number): string {
+  if (pct < 10) return "#22c55e";
+  if (pct < 25) return "#f59e0b";
+  return "#f43f5e";
+}
+function TrainingPreviewPanel({ preview: pv }: { preview: TrainingPreview }) {
+  if (!pv.healthyCount) {
+    return <div className="mt-3 rounded-xl bg-rose-500/10 p-3 text-sm text-rose-300">No healthy athletes to train this week.</div>;
+  }
+  const injPct = Math.round(pv.teamInjuryRisk * 100);
+  const freshAfter = Math.round(pv.freshnessAfter);
+  const freshBefore = Math.round(100 - pv.fatigueBefore);
+  const champ = Math.round(pv.champPrepAfter * 100);
+  const topRisk = pv.atRisk.filter((a) => Math.max(a.injuryRisk, a.overtrainRisk) > 0.06).slice(0, 2);
+
+  return (
+    <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-4">
+      <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500">
+        Projected effect · {pv.healthyCount} healthy
+      </div>
+
+      {/* four fitness systems with projected movement */}
+      <div className="grid gap-x-5 gap-y-2.5 sm:grid-cols-2">
+        {SYS_META.map(({ key, label }) => {
+          const after = pv.after[key];
+          const delta = pv.deltas[key];
+          const up = delta >= 0.05, down = delta <= -0.05;
+          return (
+            <div key={key}>
+              <div className="mb-1 flex items-center justify-between text-xs">
+                <span className="font-semibold text-slate-300">{label}</span>
+                <span className={`tabular-nums font-bold ${up ? "text-emerald-400" : down ? "text-rose-400" : "text-slate-500"}`}>
+                  {up ? "▲" : down ? "▼" : "–"} {delta >= 0 ? "+" : ""}{delta.toFixed(1)}
+                </span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                <div className="h-full rounded-full bg-[color:var(--accent)]" style={{ width: `${Math.round(after)}%` }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* freshness + injury risk meters */}
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="rounded-lg bg-white/[0.03] p-3">
+          <div className="text-[11px] uppercase tracking-wide text-slate-500">Freshness after</div>
+          <div className="mt-0.5 flex items-baseline gap-1.5">
+            <span className="text-lg font-black tabular-nums">{freshAfter}%</span>
+            <span className="text-xs text-slate-500">from {freshBefore}%</span>
+          </div>
+          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/10">
+            <div className="h-full rounded-full" style={{ width: `${freshAfter}%`, background: freshAfter > 55 ? "#22c55e" : freshAfter > 35 ? "#f59e0b" : "#f43f5e" }} />
+          </div>
+        </div>
+        <div className="rounded-lg bg-white/[0.03] p-3">
+          <div className="text-[11px] uppercase tracking-wide text-slate-500">Injury risk (team)</div>
+          <div className="mt-0.5 flex items-baseline gap-1.5">
+            <span className="text-lg font-black tabular-nums" style={{ color: riskColor(injPct) }}>{injPct}%</span>
+            <span className="text-xs text-slate-500">someone down</span>
+          </div>
+          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/10">
+            <div className="h-full rounded-full" style={{ width: `${Math.min(100, injPct)}%`, background: riskColor(injPct) }} />
+          </div>
+        </div>
+      </div>
+
+      {/* championship preparation progress */}
+      <div className="mt-3">
+        <div className="mb-1 flex items-center justify-between text-xs">
+          <span className="text-slate-400">Championship prep</span>
+          <span className="tabular-nums text-slate-400">{champ}%</span>
+        </div>
+        <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+          <div className="h-full rounded-full bg-indigo-400" style={{ width: `${Math.min(100, champ)}%` }} />
+        </div>
+      </div>
+
+      {topRisk.length > 0 && (
+        <div className="mt-3 flex items-start gap-2 rounded-lg bg-rose-500/10 p-2.5 text-xs text-rose-200">
+          <span className="mt-0.5 text-rose-400"><Icon name="pulse" size={14} /></span>
+          <span>
+            <span className="font-bold">Watch: </span>
+            {topRisk.map((a) => `${a.name} (${Math.round(Math.max(a.injuryRisk, a.overtrainRisk) * 100)}%)`).join(", ")}
+            {" "}most likely to break down this week.
+          </span>
+        </div>
+      )}
+    </div>
   );
 }
 
