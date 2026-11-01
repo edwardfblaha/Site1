@@ -43,8 +43,8 @@
       "isTop50": true
     },
     {
-      "id": "stillwater",
-      "name": "Stillwater",
+      "id": "oklahoma",
+      "name": "Oklahoma",
       "colorPrimary": "#ff7300",
       "region": "southcentral",
       "conference": "GPC",
@@ -106,8 +106,8 @@
       "isTop50": true
     },
     {
-      "id": "upstate-uni",
-      "name": "Upstate Uni",
+      "id": "upstate-university",
+      "name": "Upstate University",
       "colorPrimary": "#f76900",
       "region": "northeast",
       "conference": "ESC",
@@ -196,8 +196,8 @@
       "isTop50": true
     },
     {
-      "id": "main-line",
-      "name": "Main Line",
+      "id": "philadelphia-catholic",
+      "name": "Philadelphia Catholic",
       "colorPrimary": "#13294b",
       "region": "midatlantic",
       "conference": "MET",
@@ -205,8 +205,8 @@
       "isTop50": true
     },
     {
-      "id": "potomac",
-      "name": "Potomac",
+      "id": "washington-dc",
+      "name": "Washington DC",
       "colorPrimary": "#041e42",
       "region": "midatlantic",
       "conference": "MET",
@@ -250,8 +250,8 @@
       "isTop50": true
     },
     {
-      "id": "derby-city",
-      "name": "Derby City",
+      "id": "kentucky",
+      "name": "Kentucky",
       "colorPrimary": "#ad0000",
       "region": "southeast",
       "conference": "ESC",
@@ -268,8 +268,8 @@
       "isTop50": true
     },
     {
-      "id": "boise",
-      "name": "Boise",
+      "id": "idaho",
+      "name": "Idaho",
       "colorPrimary": "#0033a0",
       "region": "mountain",
       "conference": "RMC",
@@ -385,8 +385,8 @@
       "isTop50": true
     },
     {
-      "id": "greenville",
-      "name": "Greenville",
+      "id": "south-carolina",
+      "name": "South Carolina",
       "colorPrimary": "#582c83",
       "region": "southeast",
       "conference": "TID",
@@ -430,24 +430,6 @@
       "isTop50": true
     },
     {
-      "id": "green-country",
-      "name": "Green Country",
-      "colorPrimary": "#002d72",
-      "region": "southcentral",
-      "conference": "GPC",
-      "prestige": 78,
-      "isTop50": true
-    },
-    {
-      "id": "bluegrass",
-      "name": "Bluegrass",
-      "colorPrimary": "#7b1e3b",
-      "region": "southeast",
-      "conference": "DSC",
-      "prestige": 77,
-      "isTop50": true
-    },
-    {
       "id": "spokane",
       "name": "Spokane",
       "colorPrimary": "#041e42",
@@ -466,8 +448,8 @@
       "isTop50": true
     },
     {
-      "id": "oxford",
-      "name": "Oxford",
+      "id": "mississippi",
+      "name": "Mississippi",
       "colorPrimary": "#13294b",
       "region": "southeast",
       "conference": "DSC",
@@ -481,7 +463,7 @@
       "region": "southcentral",
       "conference": "GPC",
       "prestige": 75,
-      "isTop50": false
+      "isTop50": true
     },
     {
       "id": "college-station",
@@ -490,11 +472,11 @@
       "region": "southcentral",
       "conference": "DSC",
       "prestige": 75,
-      "isTop50": false
+      "isTop50": true
     },
     {
-      "id": "mid-missouri",
-      "name": "Mid-Missouri",
+      "id": "missouri",
+      "name": "Missouri",
       "colorPrimary": "#f1b82d",
       "region": "heartland",
       "conference": "DSC",
@@ -508,15 +490,6 @@
       "region": "southeast",
       "conference": "ESC",
       "prestige": 74,
-      "isTop50": false
-    },
-    {
-      "id": "logan",
-      "name": "Logan",
-      "colorPrimary": "#00263a",
-      "region": "mountain",
-      "conference": "RMC",
-      "prestige": 73,
       "isTop50": false
     },
     {
@@ -1642,6 +1615,33 @@
       "region": "west",
       "conference": "GPC",
       "prestige": 53,
+      "isTop50": false
+    },
+    {
+      "id": "eugene-valley",
+      "name": "Eugene Valley",
+      "colorPrimary": "#1f6feb",
+      "region": "pacific",
+      "conference": "RMC",
+      "prestige": 54,
+      "isTop50": false
+    },
+    {
+      "id": "springfield-ma",
+      "name": "Springfield MA",
+      "colorPrimary": "#455a64",
+      "region": "northeast",
+      "conference": "MIN",
+      "prestige": 57,
+      "isTop50": false
+    },
+    {
+      "id": "morgantown",
+      "name": "Morgantown",
+      "colorPrimary": "#00838f",
+      "region": "midatlantic",
+      "conference": "MET",
+      "prestige": 68,
       "isTop50": false
     }
   ]

@@ -79,10 +79,22 @@ function recordFitness(save: GameSave) {
 /** Apply this week's training to the whole league (player uses `choice`). */
 export function trainWeek(save: GameSave, choice: TrainingChoice): void {
   if (save.phase !== "regular" || save.trainedThisWeek) return;
+  const injuredBefore = new Set(player(save).roster.filter((a) => a.status.kind !== "healthy").map((a) => a.id));
   trainLeagueWeek(save.programs, save.week, rngFor(save, `train:w${save.week}`), choice);
   recordFitness(save);
+  // News: report any of YOUR athletes who went down this week.
+  for (const a of player(save).roster) {
+    if (!injuredBefore.has(a.id) && (a.status.kind === "injured" || a.status.kind === "niggle" || a.status.kind === "overtrained")) {
+      news(save, `Week ${save.week}: ${a.firstName} ${a.lastName} — ${a.status.kind}${"weeksLeft" in a.status ? ` (${a.status.weeksLeft}w)` : ""}.`);
+    }
+  }
   save.trainedThisWeek = true;
   if (!isRaceWeek(save.week)) advanceWeek(save);
+}
+
+function news(save: GameSave, line: string): void {
+  save.log.unshift(line);
+  if (save.log.length > 30) save.log.length = 30;
 }
 
 function advanceWeek(save: GameSave): void {
@@ -105,6 +117,7 @@ export function raceWeek(save: GameSave, lineupIds: string[]): RaceResult | null
     const ov = new Map<string, Athlete[]>([[save.playerId, lineup]]);
     const res = runNationals(save.programs, save.qualField, rng, ov);
     save.seasonResults.push(res);
+    logFinish(save, res, "National Championship");
     advanceWeek(save);
     return res;
   }
@@ -114,8 +127,18 @@ export function raceWeek(save: GameSave, lineupIds: string[]): RaceResult | null
   });
   save.seasonResults.push(...outcome.results);
   if (outcome.qualification) save.qualField = outcome.qualification.nationalsField;
+  if (outcome.playerResult) logFinish(save, outcome.playerResult, meetInfo(save.week)?.label ?? "Meet");
   advanceWeek(save);
   return outcome.playerResult;
+}
+
+function logFinish(save: GameSave, res: RaceResult, label: string): void {
+  const t = res.teamScores.find((x) => x.programId === save.playerId);
+  if (t) news(save, `Week ${save.week}: placed ${ordinal(t.teamPlace)} of ${res.teamScores.length} at the ${label} (${t.score} pts).`);
+}
+function ordinal(n: number): string {
+  const s = ["th", "st", "nd", "rd"], v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
 /** Can the player race nationals (did they qualify)? */

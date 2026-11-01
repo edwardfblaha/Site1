@@ -3,13 +3,14 @@ import { useGame } from "../state/store";
 import { player } from "../state/game";
 import { exportSave } from "../state/save";
 import { Crest } from "./components/art";
+import { Icon } from "./components/Icon";
 
 const NAV: [string, string, string][] = [
-  ["/hub", "Hub", "🏠"],
-  ["/roster", "Roster", "👥"],
-  ["/rankings", "Rankings", "📊"],
-  ["/recruiting", "Recruiting", "🎓"],
-  ["/budget", "Budget", "💰"],
+  ["/hub", "Hub", "home"],
+  ["/roster", "Roster", "roster"],
+  ["/rankings", "Rankings", "rankings"],
+  ["/recruiting", "Recruiting", "recruit"],
+  ["/budget", "Budget", "budget"],
 ];
 
 export function Layout() {
@@ -35,14 +36,14 @@ export function Layout() {
             <NavLink key={to} to={to}
               className={({ isActive }) =>
                 `flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold ${isActive ? "bg-[color:var(--accent)]/20 text-white" : "text-slate-300 hover:bg-white/5"}`}>
-              <span>{icon}</span>{label}
+              <Icon name={icon} size={18} />{label}
             </NavLink>
           ))}
           {save.phase === "offseason" && (
             <NavLink to="/offseason"
               className={({ isActive }) =>
                 `mt-1 flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-bold ${isActive ? "bg-amber-400 text-slate-950" : "bg-amber-400/90 text-slate-950 hover:bg-amber-300"}`}>
-              <span>🏆</span>Offseason
+              <Icon name="trophy" size={18} />Offseason
             </NavLink>
           )}
         </nav>

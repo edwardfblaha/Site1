@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useGame } from "../../state/store";
 import { player, currentEvent } from "../../state/game";
 import { Stat, Pill } from "../components/ui";
+import { Icon } from "../components/Icon";
 
 export function Offseason() {
   const save = useGame((s) => s.save)!;
@@ -60,9 +61,9 @@ export function Offseason() {
       <section className="panel p-5">
         <h2 className="mb-2 text-lg font-black">Before next season</h2>
         <div className="mb-4 grid gap-2 sm:grid-cols-3">
-          <button onClick={() => nav("/recruiting")} className="btn-ghost text-left"><b>🎓 Recruit</b><div className="text-xs text-slate-400">Sign up to 6 athletes</div></button>
-          <button onClick={() => nav("/budget")} className="btn-ghost text-left"><b>💰 Budget</b><div className="text-xs text-slate-400">Set spend & investments</div></button>
-          <button onClick={() => nav("/roster")} className="btn-ghost text-left"><b>👥 Roster</b><div className="text-xs text-slate-400">Review your team</div></button>
+          <button onClick={() => nav("/recruiting")} className="btn-ghost flex items-center gap-2 text-left"><Icon name="recruit" size={18} /><span><b>Recruit</b><div className="text-xs text-slate-400">Sign up to 6 athletes</div></span></button>
+          <button onClick={() => nav("/budget")} className="btn-ghost flex items-center gap-2 text-left"><Icon name="budget" size={18} /><span><b>Budget</b><div className="text-xs text-slate-400">Set spend & investments</div></span></button>
+          <button onClick={() => nav("/roster")} className="btn-ghost flex items-center gap-2 text-left"><Icon name="roster" size={18} /><span><b>Roster</b><div className="text-xs text-slate-400">Review your team</div></span></button>
         </div>
         <button disabled={!!ev} onClick={() => { nextSeason(); nav("/hub"); }} className="btn-accent disabled:opacity-40">
           {ev ? "Resolve the event first" : "Start next season →"}
